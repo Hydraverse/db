@@ -4,6 +4,7 @@ import os
 from typing import Dict
 
 import sqlalchemy.exc
+from attrdict import AttrDict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import scoped_session
 from sqlalchemy.orm import sessionmaker
@@ -32,15 +33,21 @@ class DbOperatorMixin:
 class DB(DbOperatorMixin):
     _: Dict[HydraRPC, DB] = {}
     engine = None
-    Session = None  # type: scoped_session
-    rpc: HydraRPC = None
-    url: str = None
+    Session: scoped_session
+    rpc: HydraRPC
+    url: str
+    wallet: str
+    passphrase: str
+    address: str
+    privkey: str
 
-    WALLET = "hybot"
-
-    CONF = {
-        "url": f"sqlite:///{os.path.join(Config.APP_BASE, 'hybot.sqlite3')}"
-    }
+    CONF = AttrDict(
+        url=f"postgresql://hyve:hyve@localhost/hyve",
+        wallet="hyve",
+        passphrase="changeme",
+        address="(HYDRA address owned by db)",
+        privkey="(Private key for above address)",
+    )
 
     def __new__(cls, rpc: HydraRPC):
         if rpc not in DB._:
@@ -49,11 +56,27 @@ class DB(DbOperatorMixin):
         return DB._[rpc]
 
     def __init__(self, rpc: HydraRPC):
-        self.url = Config.get(DB).url
+        conf = Config.get(DB)
+        self.url = conf.url
+        self.wallet = conf.wallet
+
+        if len(conf.passphrase) < 52:
+            raise ValueError("DB config wallet passphrase is too short.")
+
+        self.passphrase = conf.passphrase
+
+        if len(conf.address) != 34 or len(conf.privkey) != 52:
+            raise ValueError("DB config address or privkey not valid.")
+
+        self.address = conf.address
+        self.privkey = conf.privkey
+
         log.debug(f"db: open url='{self.url}'")
         self.engine = create_engine(self.url)
         self.Session = scoped_session(sessionmaker(bind=self.engine))
+
         Base.metadata.create_all(self.engine)
+
         self.rpc = rpc
         self.rpcx = ExplorerRPC(mainnet=rpc.mainnet)
         self.__init_wallet()
@@ -62,15 +85,23 @@ class DB(DbOperatorMixin):
         return hash(self.url + self.rpc.url)
 
     def __init_wallet(self):
-        if DB.WALLET is not None and DB.WALLET not in self.rpc.listwallets():
+        if self.wallet is not None and self.wallet not in self.rpc.listwallets():
+            self.rpc.wallet = self.wallet
+
             try:
-                log.info(f"Loading wallet '{DB.WALLET}'...")
-                self.rpc.loadwallet(DB.WALLET)
-                log.info(f"Wallet '{DB.WALLET}' loaded.")
+                log.info(f"Loading wallet '{self.wallet}'...")
+                self.rpc.loadwallet(self.wallet)
+                log.info(f"Wallet '{self.wallet}' loaded, unlocking...")
+                self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
+                log.info(f"Wallet unlocked.")
             except BaseRPC.Exception:
-                log.warning(f"Creating wallet '{DB.WALLET}'...")
-                self.rpc.createwallet(DB.WALLET, disable_private_keys=False, blank=False)
-                log.warning(f"Wallet '{DB.WALLET}' created.")
+                log.warning(f"Creating wallet '{self.wallet}'...")
+                self.rpc.createwallet(self.wallet, disable_private_keys=False, blank=False)
+                log.warning(f"Wallet '{self.wallet}' created, encrypting...")
+                self.rpc.encryptwallet(self.passphrase)
+                log.warning(f"Wallet encrypted, unlocking...")
+                self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
+                log.warning(f"Wallet unlocked.")
 
     def _run_in_executor_session(self, fn, *args):
         self.Session()
@@ -82,10 +113,6 @@ class DB(DbOperatorMixin):
             raise
         finally:
             self.Session.remove()
-
-
-if DB.WALLET is not None:
-    os.environ.setdefault("HY_RPC_WALLET", DB.WALLET)
 
 
 from .base import __all__ as __base_all__
