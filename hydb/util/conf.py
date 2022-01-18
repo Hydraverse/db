@@ -20,7 +20,7 @@ class Config:
     @staticmethod
     def get(cls: type, defaults=False, save_defaults=False) -> AttrDict:
         conf = AttrDict(Config.read(create=True).get(
-            cls.__name__, Config.DEFAULT[cls.__name__]
+            cls.__name__, Config.DEFAULT.setdefault(cls.__name__, AttrDict())
         ))
 
         if defaults:

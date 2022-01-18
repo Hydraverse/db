@@ -66,23 +66,24 @@ class DB:
         return hash(self.url + self.rpc.url)
 
     def __init_wallet(self):
-        if self.wallet is not None and self.wallet not in self.rpc.listwallets():
+        if self.wallet is not None:
             self.rpc.wallet = self.wallet
 
-            try:
-                log.info(f"Loading wallet '{self.wallet}'...")
-                self.rpc.loadwallet(self.wallet)
-                log.info(f"Wallet '{self.wallet}' loaded, unlocking...")
-                self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
-                log.info(f"Wallet unlocked.")
-            except BaseRPC.Exception:
-                log.warning(f"Creating wallet '{self.wallet}'...")
-                self.rpc.createwallet(self.wallet, disable_private_keys=False, blank=False)
-                log.warning(f"Wallet '{self.wallet}' created, encrypting...")
-                self.rpc.encryptwallet(self.passphrase)
-                log.warning(f"Wallet encrypted, unlocking...")
-                self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
-                log.warning(f"Wallet unlocked.")
+            if self.wallet not in self.rpc.listwallets():
+                try:
+                    log.info(f"Loading wallet '{self.wallet}'...")
+                    self.rpc.loadwallet(self.wallet)
+                    log.info(f"Wallet '{self.wallet}' loaded, unlocking...")
+                    self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
+                    log.info(f"Wallet unlocked.")
+                except BaseRPC.Exception:
+                    log.warning(f"Creating wallet '{self.wallet}'...")
+                    self.rpc.createwallet(self.wallet, disable_private_keys=False, blank=False)
+                    log.warning(f"Wallet '{self.wallet}' created, encrypting...")
+                    self.rpc.encryptwallet(self.passphrase)
+                    log.warning(f"Wallet encrypted, unlocking...")
+                    self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
+                    log.warning(f"Wallet unlocked.")
 
     class WithSession:
         db: DB

@@ -1,5 +1,6 @@
 """Hydra Bot Application.
 """
+import os
 from argparse import ArgumentParser
 
 from hydra.app import HydraApp
@@ -8,6 +9,11 @@ from hydra.test import Test
 
 from .util.conf import Config
 from . import VERSION
+
+from .db import DB, Block
+
+os.environ["HYPY_NO_RPC_ARGS"] = "1"
+# os.environ["HYPY_NO_JSON_ARGS"] = "1"
 
 
 @HydraApp.register(name="hydb", desc="Hydraverse DB", version=VERSION)
@@ -27,15 +33,18 @@ class HyDB(HydraApp):
             Config.read(create=True)
             exit(-1)
 
-        self.db = DB(self.rpc)
+        self.db = DB()
+        self.rpc = self.db.rpc
 
         if self.args.shell:
             return self.shell()
 
-    # noinspection PyMethodMayBeStatic,PyUnresolvedReferences,PyBroadException
+        return Block.update_task(self.db)
+
+    # noinspection PyMethodMayBeStatic,PyUnresolvedReferences
     def shell(self):
         import sys, traceback, code
-        from hybot.data import DB, Addr, Smac, Tokn, TX, AddrTX, User, UserAddr, Block
+        from hydb.db import DB, Addr, Smac, Tokn, TX, AddrTX, User, UserAddr, UserAddrTX, Block
         code.interact(local=locals())
         exit(0)
 

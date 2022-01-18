@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import time
 from asyncio import CancelledError
 from typing import Optional
 
@@ -199,6 +200,19 @@ class Block(DbPkidMixin, Base):
             raise
         except BaseException as exc:
             log.critical(f"Block.update exception: {str(exc)}", exc_info=exc)
+
+    @staticmethod
+    def update_task(db: DB) -> None:
+        try:
+            if LocalState.height == 0:
+                Block.__update_init(db)
+
+            while 1:
+                Block.update(db)
+                time.sleep(15)
+
+        except KeyboardInterrupt:
+            pass
 
     @staticmethod
     def __update_init(db: DB) -> None:
