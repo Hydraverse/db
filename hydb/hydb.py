@@ -17,7 +17,7 @@ os.environ["HYPY_NO_RPC_ARGS"] = "1"
 
 
 @HydraApp.register(name="hydb", desc="Hydraverse DB", version=VERSION)
-class HyDB(HydraApp):
+class HyDb(HydraApp):
     db: DB = None
 
     @staticmethod
@@ -45,15 +45,17 @@ class HyDB(HydraApp):
     def shell(self):
         import sys, traceback, code
         from hydb.db import DB, Addr, Smac, Tokn, TX, AddrTX, User, UserAddr, UserAddrTX, Block
+        from hydb.api.client import HyDbRPC, schemas
+        client = HyDbRPC()
         code.interact(local=locals())
         exit(0)
 
 
 @Test.register()
-class HyDBTest(Test):
+class HyDbTest(Test):
 
     def test_0_hydb_runnable(self):
-        self.assertHydraAppIsRunnable(HyDB, "-h")
+        self.assertHydraAppIsRunnable(HyDb, "-h")
 
     def test_1_hydb_run_default(self):
-        self.assertHydraAppIsRunnable(HyDB)
+        self.assertHydraAppIsRunnable(HyDb)

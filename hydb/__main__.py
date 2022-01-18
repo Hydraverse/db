@@ -1,3 +1,3 @@
-from .hydb import HyDB
+from .hydb import HyDb
 
-HyDB.main()
+HyDb.main()
