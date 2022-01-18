@@ -45,8 +45,8 @@ class HyDb(HydraApp):
     def shell(self):
         import sys, traceback, code
         from hydb.db import DB, Addr, Smac, Tokn, TX, AddrTX, User, UserAddr, UserAddrTX, Block
-        from hydb.api.client import HyDbRPC, schemas
-        client = HyDbRPC()
+        from hydb.api.client import HyDbClient, schemas
+        client = HyDbClient()
         code.interact(local=locals())
         exit(0)
 
