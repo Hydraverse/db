@@ -173,12 +173,12 @@ class Block(DbPkidMixin, Base):
         pass
 
     @staticmethod
-    async def update_task(db: DB) -> None:
+    async def update_task_async(db: DB) -> None:
         # await asyncio.sleep(30)
 
         try:
             while 1:
-                await Block.update(db)
+                await Block.update_async(db)
                 await asyncio.sleep(15)
         except KeyboardInterrupt:
             pass
@@ -186,13 +186,13 @@ class Block(DbPkidMixin, Base):
             pass
 
     @staticmethod
-    async def update(db: DB) -> None:
+    async def update_async(db: DB) -> None:
         # noinspection PyBroadException
         try:
             if LocalState.height == 0:
-                await db.run_in_executor_session(Block.__update_init, db)
+                await db.in_session_async(Block.__update_init, db)
 
-            return await db.run_in_executor_session(Block.__update, db)
+            return await db.in_session_async(Block.update, db)
         except KeyboardInterrupt:
             raise
         except CancelledError:
@@ -215,7 +215,7 @@ class Block(DbPkidMixin, Base):
             LocalState.height = db.rpc.getblockcount() - 1
 
     @staticmethod
-    def __update(db: DB) -> None:
+    def update(db: DB) -> None:
 
         chain_height = db.rpc.getblockcount()
         chain_hash = db.rpc.getblockhash(chain_height)

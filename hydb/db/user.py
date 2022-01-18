@@ -92,36 +92,28 @@ class User(DbUserUniqMixin, Base):
         return user_dict
 
     @staticmethod
-    async def get_pkid(db: DB, user_id: int) -> Optional[int]:
-        return await db.run_in_executor_session(User._get_pkid, db, user_id)
-
-    @staticmethod
-    def _get_pkid(db: DB, user_id: int) -> Optional[int]:
+    def get_pkid(db: DB, tg_user_id: int) -> Optional[int]:
         u = (
             db.Session.query(
                 User.pkid
             ).filter(
-                User.tg_user_id == user_id
+                User.tg_user_id == tg_user_id
             ).one_or_none()
         )
 
         return u.pkid if u is not None else None
 
     @staticmethod
-    async def get(db: DB, user_id: int, create: bool = True, full: bool = False) -> Optional[AttrDict]:
-        return await db.run_in_executor_session(User._get, db, user_id, create, full)
-
-    @staticmethod
-    def _get(db: DB, user_id: int, create: bool, full: bool) -> Optional[AttrDict]:
+    def get(db: DB, tg_user_id: int, create: bool = False) -> Optional[User]:
 
         u: User = db.Session.query(
             User
         ).filter(
-            User.tg_user_id == user_id
+            User.tg_user_id == tg_user_id
         ).one_or_none()
 
         if u is not None:
-            return u.asdict(full=full)
+            return u
 
         elif not create:
             return None
@@ -132,6 +124,7 @@ class User(DbUserUniqMixin, Base):
             try:
                 db.Session.add(uniq)
                 db.Session.commit()
+                db.Session.refresh(uniq)
                 break
             except IntegrityError:
                 db.Session.rollback()
@@ -140,26 +133,22 @@ class User(DbUserUniqMixin, Base):
 
         user_ = User(
             uniq=uniq,
-            tg_user_id=user_id,
+            tg_user_id=tg_user_id,
         )
 
         db.Session.add(user_)
         db.Session.commit()
+        db.Session.refresh(user_)
 
-        return user_.asdict(full=full)
+        return user_
 
+    # noinspection PyMethodMayBeStatic,PyUnusedLocal
     def on_new_addr_tx(self, db: DB, user_addr_tx: UserAddrTX) -> bool:
         # TODO: Also process and notify for all token TXes if user chooses
         return user_addr_tx.addr_tx.addr.addr_tp == Addr.Type.H
 
     @staticmethod
-    async def update_info(db: DB, user_pk: int, info: dict, data: dict = None, over: bool = False) -> None:
-        if (info is None and data is None) or (over and (not info or not data)):
-            return
-        return await db.run_in_executor_session(User._update_info, db, user_pk, info, data, over)
-
-    @staticmethod
-    def _update_info(db: DB, user_pk: int, info: dict, data: dict, over: bool) -> None:
+    def update_info(db: DB, user_pk: int, info: dict, data: dict, over: bool) -> None:
         u: User = db.Session.query(User).where(
             User.pkid == user_pk,
         ).options(
@@ -181,19 +170,15 @@ class User(DbUserUniqMixin, Base):
         db.Session.commit()
 
     @staticmethod
-    async def delete(db: DB, user_id: int) -> None:
-        return await db.run_in_executor_session(User.__delete, db, user_id)
-
-    @staticmethod
-    def __delete(db: DB, user_id: int) -> None:
+    def delete(db: DB, tg_user_id: int) -> None:
         u: User = db.Session.query(User).where(
-            User.tg_user_id == user_id,
+            User.tg_user_id == tg_user_id,
         ).one_or_none()
 
         if u is not None:
-            return u.___delete(db)
+            return u.__delete(db)
         
-    def ___delete(self, db: DB):
+    def __delete(self, db: DB):
         for user_addr_tx in list(self.user_addr_txes):
             user_addr_tx._remove(db, self.user_addr_txes)
 
@@ -207,11 +192,7 @@ class User(DbUserUniqMixin, Base):
         db.Session.commit()
 
     @staticmethod
-    async def addr_add(db: DB, user_pk: int, address: str) -> AttrDict:
-        return await db.run_in_executor_session(User._addr_add, db, user_pk, address)
-
-    @staticmethod
-    def _addr_add(db: DB, user_pk: int, address: str) -> AttrDict:
+    def addr_add(db: DB, user_pk: int, address: str) -> UserAddr:
         u: User = db.Session.query(
             User,
         ).where(
@@ -222,7 +203,8 @@ class User(DbUserUniqMixin, Base):
 
         user_addr: UserAddr = u.__addr_add(db, address)
         db.Session.commit()
-        return user_addr.asdict()
+        db.Session.refresh(user_addr)
+        return user_addr
 
     def __addr_add(self, db, address: str) -> UserAddr:
         addr: [Addr, Smac, Tokn, NFT] = Addr.get(db, address, create=True)
@@ -246,11 +228,7 @@ class User(DbUserUniqMixin, Base):
             tokn_addr.update_balance(db)
 
     @staticmethod
-    async def addr_del(db: DB, user_pk: int, address: str) -> Optional[AttrDict]:
-        return await db.run_in_executor_session(User._addr_del, db, user_pk, address)
-
-    @staticmethod
-    def _addr_del(db: DB, user_pk: int, address: str) -> Optional[AttrDict]:
+    def addr_del(db: DB, user_pk: int, address: str) -> bool:
         addr: [Addr, Smac, Tokn, NFT] = Addr.get(db, address, create=False)
 
         if addr is not None:
@@ -264,10 +242,11 @@ class User(DbUserUniqMixin, Base):
             ).one_or_none()
 
             if ua is not None:
-                ua_dict = ua.asdict()
                 ua._remove(db, ua.user.user_addrs_by_type(addr.addr_tp))
                 db.Session.commit()
-                return ua_dict
+                return True
+
+        return False
 
     def enumerate_user_tokn_addrs(self, db: DB, user_addr_tokn: UserAddr) -> Generator[ToknAddr]:
         for user_addr in self.user_addrs:

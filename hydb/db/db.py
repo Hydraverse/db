@@ -1,13 +1,12 @@
 from __future__ import annotations
 
 import os
-from typing import Dict
+from typing import Dict, Optional
 
 import sqlalchemy.exc
 from attrdict import AttrDict
 from sqlalchemy import create_engine
-from sqlalchemy.orm import scoped_session
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, scoped_session
 import asyncio
 
 from hydra.rpc.base import BaseRPC
@@ -17,21 +16,8 @@ from hydra import log
 from hydb.util.conf import Config
 
 
-class DbOperatorMixin:
-    @staticmethod
-    async def run_in_executor(fn, *args):
-        return await asyncio.get_event_loop().run_in_executor(None, fn, *args)
-
-    async def run_in_executor_session(self, fn, *args):
-        return await DB.run_in_executor(lambda: self._run_in_executor_session(fn, *args))
-
-    def _run_in_executor_session(self, fn, *args):
-        raise NotImplementedError
-
-
 @Config.defaults
-class DB(DbOperatorMixin):
-    _: Dict[HydraRPC, DB] = {}
+class DB:
     engine = None
     Session: scoped_session
     rpc: HydraRPC
@@ -43,19 +29,12 @@ class DB(DbOperatorMixin):
 
     CONF = AttrDict(
         url=f"postgresql://hyve:hyve@localhost/hyve",
-        wallet="hyve",
         passphrase="changeme",
         address="(HYDRA address owned by db)",
         privkey="(Private key for above address)",
     )
 
-    def __new__(cls, rpc: HydraRPC):
-        if rpc not in DB._:
-            DB._[rpc] = super().__new__(cls)
-
-        return DB._[rpc]
-
-    def __init__(self, rpc: HydraRPC):
+    def __init__(self):
         conf = Config.get(DB)
         self.url = conf.url
         self.wallet = conf.wallet
@@ -77,8 +56,10 @@ class DB(DbOperatorMixin):
 
         Base.metadata.create_all(self.engine)
 
-        self.rpc = rpc
-        self.rpcx = ExplorerRPC(mainnet=rpc.mainnet)
+        conf_rpc = Config.get(HydraRPC)
+
+        self.rpc = HydraRPC(url=conf_rpc.url)
+        self.rpcx = ExplorerRPC(mainnet=self.rpc.mainnet)
         self.__init_wallet()
 
     def __hash__(self):
@@ -103,16 +84,40 @@ class DB(DbOperatorMixin):
                 self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
                 log.warning(f"Wallet unlocked.")
 
-    def _run_in_executor_session(self, fn, *args):
-        self.Session()
+    class WithSession:
+        db: DB
 
-        try:
-            return fn(*args)
-        except sqlalchemy.exc.SQLAlchemyError:
-            self.Session.rollback()
-            raise
-        finally:
-            self.Session.remove()
+        def __init__(self, db: DB):
+            self.db = db
+
+        def __enter__(self):
+            self.db.Session()
+            return self.db
+
+        def __exit__(self, exc_type, exc_val, exc_tb):
+            self.db.Session.remove()
+
+    def with_session(self):
+        return DB.WithSession(self)
+
+    def yield_with_session(self):
+        with self.with_session() as db:
+            yield db
+
+    def yield_session(self):
+        with self.with_session() as db:
+            yield db.Session
+
+    def in_session(self, fn, *args, **kwds):
+        with self.with_session():
+            return fn(*args, **kwds)
+
+    async def in_session_async(self, fn, *args):
+        return await DB._run_in_executor(self.in_session, fn, *args)
+
+    @staticmethod
+    async def _run_in_executor(fn, *args):
+        return await asyncio.get_event_loop().run_in_executor(None, fn, *args)
 
 
 from .base import __all__ as __base_all__
