@@ -91,13 +91,14 @@ if DB.WALLET is not None:
 from .base import __all__ as __base_all__
 from .base import *
 from .user import __all__ as __user_all__
+from .user import *
 from .addr import __all__ as __addr_all__
+from .addr import *
 from .block import __all__ as __block_all__
-from .tx import __all__ as __tx_all__
+from .block import *
 
 __all__ = ("DB",) + \
           __base_all__ + \
           __user_all__ + \
           __addr_all__ + \
-          __block_all__ + \
-          __tx_all__
+          __block_all__

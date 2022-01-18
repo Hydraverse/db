@@ -26,6 +26,7 @@ class User(DbUserUniqMixin, Base):
     )
 
     tg_user_id = Column(Integer, nullable=False, unique=True, primary_key=False, index=True)
+    tg_user_at = Column(String, nullable=True, unique=True, primary_key=False, index=True)
 
     info = DbInfoColumn()
     data = DbDataColumn()
