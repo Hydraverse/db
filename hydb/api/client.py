@@ -16,5 +16,10 @@ class HyDbClient(BaseRPC):
     def read_user(self, tg_user_id: int) -> schemas.User:
         return schemas.User(**self.get(f"/user/{tg_user_id}"))
 
-
-
+    def create_user(self, tg_user_id: int) -> schemas.User:
+        return schemas.User(
+            **self.post(
+                f"/user/",
+                **schemas.UserCreate(tg_user_id=tg_user_id).dict()
+            )
+        )

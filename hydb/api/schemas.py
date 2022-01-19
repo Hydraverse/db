@@ -106,7 +106,6 @@ class UserBase(BaseModel):
 
 
 class UserAddr(BaseModel):
-    user: UserBase
     addr: Addr
 
     class Config:
@@ -114,7 +113,6 @@ class UserAddr(BaseModel):
 
 
 class UserTokn(BaseModel):
-    user: UserBase
     addr: Tokn
 
     class Config:
@@ -123,7 +121,7 @@ class UserTokn(BaseModel):
 
 class User(UserBase):
     user_addrs: List[UserAddr]
-    user_tokns: List[UserAddr]
+    user_tokns: List[UserTokn]
 
     class Config:
         orm_mode = True
