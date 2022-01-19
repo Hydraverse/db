@@ -30,7 +30,7 @@ class Config:
             for k, v in defaults.items():
                 if k not in conf:
                     updated = True
-                    conf[k] = v
+                    conf[k] = v if not callable(v) else v()
 
             if updated and save_defaults:
                 Config.set(cls, conf)
