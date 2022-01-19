@@ -6,7 +6,7 @@ from sqlalchemy_json import mutable_json_type
 
 __all__ = (
     "Base", "dictattrs",
-    "DbPkidMixin", "DbDateMixin",
+    "DbPkidColumn", "DbDateCreateColumn", "DbDateUpdateColumn",
     "DbInfoColumn", "DbDataColumn",
     "DbInfoColumnIndex",
 )
@@ -57,14 +57,10 @@ def DbInfoColumnIndex(table_name: str, column_name: str = "info"):
     )
 
 
-class DbPkidMixin:
-    # pkid = Column(Integer, nullable=False, unique=True, primary_key=True, autoincrement=True, index=True)
-    pkid = Column(Integer, Sequence("pkid_seq", metadata=Base.metadata), nullable=False, primary_key=True)
+DbPkidColumn = lambda seq="pkid_seq": Column(
+    Integer, Sequence(seq, metadata=Base.metadata), nullable=False, primary_key=True
+)
 
 
-class DbDateMixin:
-    date_create = Column(DateTime, default=func.now(), nullable=False, index=False)
-    date_update = Column(DateTime, onupdate=func.now(), index=True)
-
-
-
+DbDateCreateColumn = lambda: Column(DateTime, default=func.now(), nullable=False, index=False)
+DbDateUpdateColumn = lambda: Column(DateTime, onupdate=func.now(), index=True)

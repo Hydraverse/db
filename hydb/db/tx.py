@@ -10,12 +10,13 @@ from .db import DB
 __all__ = "TX",
 
 
-class TX(DbPkidMixin, Base):
+class TX(Base):
     __tablename__ = "tx"
     __table_args__ = (
         UniqueConstraint("block_pkid", "block_txno"),
     )
 
+    pkid = DbPkidColumn()
     block_pkid = Column(Integer, ForeignKey("block.pkid", ondelete="CASCADE"), nullable=False)
     block_txno = Column(SmallInteger, nullable=False)
     block_txid = Column(String(64), nullable=False, unique=True)

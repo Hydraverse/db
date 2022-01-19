@@ -20,8 +20,8 @@ from .user_addr_tx import UserAddrTX
 __all__ = "Addr", "AddrTX", "Smac", "Tokn", "NFT"
 
 
-@dictattrs("pkid", "date_create", "date_update", "addr_tp", "addr_hx", "addr_hy", "block_h", "balance")
-class Addr(DbPkidMixin, DbDateMixin, Base):
+@dictattrs("pkid", "date_create", "date_update", "addr_tp", "addr_hx", "addr_hy", "block_h", "info")
+class Addr(Base):
     __tablename__ = "addr"
     __table_args__ = (
         DbInfoColumnIndex(__tablename__),
@@ -43,11 +43,13 @@ class Addr(DbPkidMixin, DbDateMixin, Base):
                 None
             )
 
+    pkid = DbPkidColumn()
+    date_create = DbDateCreateColumn()
+    date_update = DbDateUpdateColumn()
     addr_tp = Column(Enum(Type, validate_strings=True), nullable=False, index=True)
     addr_hx = Column(String(40), nullable=False, unique=True, index=True)
     addr_hy = Column(String(34), nullable=False, unique=True, index=True)
     block_h = Column(Integer, nullable=True)
-    balance = Column(BigInteger, nullable=True)
     info = DbInfoColumn()
 
     addr_users = relationship(
@@ -163,16 +165,8 @@ class Addr(DbPkidMixin, DbDateMixin, Base):
         if "qrc721" in info:
             del info.qrc721
 
-        if "balance" in info:
-            balanc = info.balance
-            del info.balance
-
         if info != self.info:
             self.info = info
-            add = True
-
-        if balanc is not ... and self.balance != balanc:
-            self.balance = balanc
             add = True
 
         if add:

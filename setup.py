@@ -39,6 +39,7 @@ setup(
             "alembic[tz]",
             "fastapi",
             "uvicorn[standard]",
+            "cryptography",
         ]
     },
     # entry_points={

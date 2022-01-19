@@ -25,7 +25,7 @@ class LocalState:
     hash = ""
 
 
-class Block(DbPkidMixin, Base):
+class Block(Base):
     __tablename__ = "block"
     __table_args__ = (
         UniqueConstraint("height", "hash"),
@@ -33,6 +33,7 @@ class Block(DbPkidMixin, Base):
         DbInfoColumnIndex(__tablename__, "logs"),
     )
 
+    pkid = DbPkidColumn(seq="block_seq")
     height = Column(Integer, nullable=False, unique=False, primary_key=False, index=True)
     hash = Column(String(64), nullable=False, unique=True, primary_key=False, index=True)
 

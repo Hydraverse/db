@@ -14,13 +14,14 @@ from .user_addr_tx import UserAddrTX
 __all__ = "AddrTX",
 
 
-class AddrTX(DbPkidMixin, Base):
+class AddrTX(Base):
     __tablename__ = "addr_tx"
     __table_args__ = (
         UniqueConstraint("addr_pk", "tx_pk"),
         Index(__tablename__ + "_idx", "addr_pk", "tx_pk")
     )
 
+    pkid = DbPkidColumn()
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), nullable=False, primary_key=False)
     tx_pk = Column(Integer, ForeignKey("tx.pkid", ondelete="CASCADE"), nullable=False, primary_key=False)
 
