@@ -45,7 +45,7 @@ class Block(Base):
     )
 
     info = DbInfoColumn()
-    logs = DbInfoColumn()
+    logs = DbDataColumn()
 
     def _delete_if_unused(self, db: DB) -> bool:
         if not len(self.txes):
