@@ -150,6 +150,19 @@ class Addr(DbPkidMixin, DbDateMixin, Base):
         if "qrc20Balances" in info:
             del info["qrc20Balances"]
 
+        if "qrc721Balances" in info:
+            del info["qrc721Balances"]
+
+        if "qrc20" in info:
+            del info.qrc20.name
+            del info.qrc20.symbol
+            del info.qrc20.decimals
+            del info.qrc20.totalSupply
+            # Leaves behind 'holders', 'version', 'transactions'
+
+        if "qrc721" in info:
+            del info.qrc721
+
         if "balance" in info:
             balanc = info.balance
             del info.balance
