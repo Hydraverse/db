@@ -1,3 +1,8 @@
+"""Setup file for package.
+
+See https://github.com/pypa/sampleproject/blob/main/setup.py
+    for a full list of setup() options.
+"""
 import sys
 import os
 
@@ -5,7 +10,6 @@ from setuptools import find_packages
 from setuptools import setup
 
 import hydb
-
 
 # noinspection Assert
 assert sys.version_info[0] == 3 and sys.version_info[1] >= 8, "This package requires Python 3.8 or newer"
@@ -23,14 +27,20 @@ setup(
     install_requires=[
         "halo-hypy",
         "pyyaml",
-        "namemaker",
-        "sqlalchemy",
-        "sqlalchemy-json",
-        "psycopg2-binary",
-        "alembic[tz]",
-        "fastapi",
-        "uvicorn[standard]",
+        "pydantic",
     ],
+    extras_require={
+        "client": [],
+        "server": [
+            "namemaker",
+            "sqlalchemy",
+            "sqlalchemy-json",
+            "psycopg2-binary",
+            "alembic[tz]",
+            "fastapi",
+            "uvicorn[standard]",
+        ]
+    },
     # entry_points={
     #     "console_scripts": [
     #         "hybot = hybot:Hybot.main"
