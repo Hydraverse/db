@@ -182,7 +182,8 @@ class Addr(Base):
     def __on_new_addr(self, db: DB):
         self.update_balances(db, tx=None)
         db.Session.add(self)
-        db.Session.commit()  # <-- TODO: Ensure that this is necessary.
+        db.Session.commit()
+        db.Session.refresh(self)
         Block._on_new_addr(db, self)
 
     def _removed_user(self, db: DB):
@@ -228,7 +229,7 @@ class Addr(Base):
             return q.one()
 
         except NoResultFound:
-            addr: [Addr, Smac, Tokn< NFT] = Addr.__make(addr_tp, addr_hx, addr_hy, **addr_attr)
+            addr: [Addr, Smac, Tokn, NFT] = Addr.__make(addr_tp, addr_hx, addr_hy, **addr_attr)
             addr.__on_new_addr(db)
             return addr
 

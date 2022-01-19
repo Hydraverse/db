@@ -75,6 +75,56 @@ class ToknAddr(BaseModel):
         orm_mode = True
 
 
+class TXBase(BaseModel):
+    pkid: int
+    block_pkid: int
+    block_txno: int
+    block_txid: str
+    vouts_inp: AttrDict
+    vouts_out: AttrDict
+    logs: AttrDict
+
+    class Config:
+        orm_mode = True
+
+
+class AddrTX(BaseModel):
+    pkid: int
+    addr_pk: int
+    tx: TXBase
+
+    class Config:
+        orm_mode = True
+
+
+class TX(TXBase):
+    addr_txes: List[AddrTX]
+
+    class Config:
+        orm_mode = True
+
+
+class Block(BaseModel):
+    pkid: int
+    height: int
+    hash: str
+    info: AttrDict
+    logs: AttrDict
+
+    txes: List[TX]
+
+    class Config:
+        orm_mode = True
+
+
+class UserAddrTX(BaseModel):
+    user_pk: int
+    addr_tx: AddrTX
+
+    class Config:
+        orm_mode = True
+
+
 class UserUniq(BaseModel):
     pkid: int
     name: str
@@ -107,10 +157,19 @@ class UserBase(BaseModel):
 
 
 class UserAddr(BaseModel):
+    user_pk: int
     addr: Addr
 
     class Config:
         orm_mode = True
+
+
+class UserAddrAdd(BaseModel):
+    address: str
+
+
+class UserAddrDel(BaseModel):
+    addr_pk: int
 
 
 class UserTokn(BaseModel):
@@ -124,5 +183,8 @@ class User(UserBase):
     user_addrs: List[UserAddr]
     user_tokns: List[UserTokn]
 
+    user_addr_txes: List[UserAddrTX]
+
     class Config:
         orm_mode = True
+

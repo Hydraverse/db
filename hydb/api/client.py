@@ -13,10 +13,10 @@ class HyDbClient(BaseRPC):
         conf = Config.get(HyDbClient, defaults=True, save_defaults=True)
         super().__init__(url=conf.url)
 
-    def read_user(self, tg_user_id: int) -> schemas.User:
+    def user_get(self, tg_user_id: int) -> schemas.User:
         return schemas.User(**self.get(f"/user/{tg_user_id}"))
 
-    def create_user(self, tg_user_id: int) -> schemas.User:
+    def user_add(self, tg_user_id: int) -> schemas.User:
         return schemas.User(
             **self.post(
                 f"/user/",
@@ -24,8 +24,22 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def delete_user(self, user_pk: int, tg_user_id: int) -> None:
+    def user_del(self, user_pk: int, tg_user_id: int) -> None:
         self.post(
             f"/user/{tg_user_id}",
             **schemas.UserDelete(pkid=user_pk).dict()
         )
+
+    def user_addr_add(self, user: schemas.User, address: str) -> schemas.UserAddr:
+        return schemas.UserAddr(
+            **self.post(
+                f"/user/{user.tg_user_id}/addr/add",
+                **schemas.UserAddrAdd(address=address).dict()
+            )
+        )
+
+    def user_addr_del(self, user: schemas.User, addr_pk: int) -> bool:
+        return self.post(
+                f"/user/{user.tg_user_id}/addr/del",
+                **schemas.UserAddrDel(addr_pk=addr_pk).dict()
+            )

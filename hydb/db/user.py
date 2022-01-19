@@ -194,23 +194,25 @@ class User(Base):
         db.Session.delete(self)
         db.Session.commit()
 
-    @staticmethod
-    def addr_add(db: DB, user_pk: int, address: str) -> UserAddr:
-        u: User = db.Session.query(
-            User,
-        ).where(
-            User.pkid == user_pk,
-        ).options(
-            lazyload(User.user_addrs),
-        ).one()
+    def addr_get(self, db: DB, address: str, create: bool = True) -> Optional[UserAddr]:
+        addr: [Addr, Smac, Tokn, NFT] = Addr.get(db, address, create=create)
 
-        user_addr: UserAddr = u.__addr_add(db, address)
+        if addr is None:
+            return None
+
+        for ua in (self.user_addrs + self.user_tokns):
+            if ua.addr_pk == addr.pkid:
+                return ua
+
+        if not create:
+            return None
+
+        ua: UserAddr = self.addr_add(db, addr)
         db.Session.commit()
-        db.Session.refresh(user_addr)
-        return user_addr
+        db.Session.refresh(ua)
+        return ua
 
-    def __addr_add(self, db, address: str) -> UserAddr:
-        addr: [Addr, Smac, Tokn, NFT] = Addr.get(db, address, create=True)
+    def addr_add(self, db, addr: [Addr, Smac, Tokn, NFT]) -> UserAddr:
 
         ua = UserAddr(user=self, addr=addr)
         db.Session.add(ua)
@@ -230,24 +232,20 @@ class User(Base):
         for tokn_addr in self.enumerate_user_addr_tokns(db, user_addr):
             tokn_addr.update_balance(db)
 
-    @staticmethod
-    def addr_del(db: DB, user_pk: int, address: str) -> bool:
-        addr: [Addr, Smac, Tokn, NFT] = Addr.get(db, address, create=False)
+    def addr_del(self, db: DB, addr_pk: int) -> bool:
+        ua: UserAddr = db.Session.query(
+            UserAddr,
+        ).where(
+            and_(
+                UserAddr.user_pk == self.pkid,
+                UserAddr.addr_pk == addr_pk,
+            )
+        ).one_or_none()
 
-        if addr is not None:
-            ua: UserAddr = db.Session.query(
-                UserAddr,
-            ).where(
-                and_(
-                    UserAddr.user_pk == user_pk,
-                    UserAddr.addr_pk == addr.pkid,
-                )
-            ).one_or_none()
-
-            if ua is not None:
-                ua._remove(db, ua.user.user_addrs_by_type(addr.addr_tp))
-                db.Session.commit()
-                return True
+        if ua is not None:
+            ua._remove(db, ua.user.user_addrs_by_type(ua.addr.addr_tp))
+            db.Session.commit()
+            return True
 
         return False
 

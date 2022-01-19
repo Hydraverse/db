@@ -21,18 +21,18 @@ def say_hello(name: str):
 
 
 @app.post("/user/", response_model=schemas.User)
-def create_user(user: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.get_user_by_tg_id(db, user.tg_user_id)
+def user_add(user: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get(db, user.tg_user_id)
 
     if db_user:
         raise HTTPException(status_code=400, detail="Telegram ID already registered.")
 
-    return crud.create_user(db=db, user=user)
+    return crud.user_add(db=db, user=user)
 
 
 @app.post("/user/{tg_user_id}")
-def delete_user(tg_user_id: int, user: schemas.UserDelete, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.get_user_by_tg_id(db, tg_user_id)
+def user_del(tg_user_id: int, user: schemas.UserDelete, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get(db, tg_user_id)
 
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found.")
@@ -44,13 +44,33 @@ def delete_user(tg_user_id: int, user: schemas.UserDelete, db: DB = Depends(dbas
 
 
 @app.get("/user/{tg_user_id}", response_model=schemas.User)
-def read_user(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.get_user_by_tg_id(db, tg_user_id)
+def user_read(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get(db, tg_user_id)
 
     if db_user is None:
         raise HTTPException(status_code=404, detail="User not found.")
 
     return db_user
+
+
+@app.post("/user/{tg_user_id}/addr/add", response_model=schemas.UserAddr)
+def user_addr_add(tg_user_id: int, addr: schemas.UserAddrAdd, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get(db, tg_user_id)
+
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return crud.user_addr_add(db, db_user, addr)
+
+
+@app.post("/user/{tg_user_id}/addr/del", response_model=bool)
+def user_addr_add(tg_user_id: int, addr: schemas.UserAddrDel, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get(db, tg_user_id)
+
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return crud.user_addr_del(db, db_user, addr)
 
 
 # Use as template for Addrs.
