@@ -2,13 +2,13 @@ from time import time_ns
 from cryptography.fernet import Fernet
 
 from sqlalchemy import Column, ForeignKey, Integer, String, BigInteger, LargeBinary
-from sqlalchemy.orm import relationship, declared_attr
+from sqlalchemy.orm import relationship
 
 from .base import *
 from .db import DB
 from hydb.util import namegen
 
-__all__ = "UserUniq",
+__all__ = "UserUniq", "DbUserUniqPkidColumn", "DbUserUniqRelationship"
 
 
 @dictattrs("pkid", "date_create", "date_update", "name", "time", "nano", "info", "data")
@@ -47,14 +47,5 @@ class UserUniq(Base):
         return " ".join(namegen.make_name())
 
 
-class DbUserUniqMixin:
-
-    @declared_attr
-    def pkid(self):
-        return Column(Integer, ForeignKey("user_uniq.pkid", ondelete="CASCADE"), nullable=False, unique=True, primary_key=True, index=True)
-
-    # name = Column(String, ForeignKey("user_uniq.name"), nullable=False, unique=True, primary_key=True, index=True)
-
-    @declared_attr
-    def uniq(self):
-        return relationship("UserUniq")
+DbUserUniqPkidColumn = lambda: Column(Integer, ForeignKey("user_uniq.pkid", ondelete="CASCADE"), nullable=False, unique=True, primary_key=True, index=True)
+DbUserUniqRelationship = lambda: relationship("UserUniq")

@@ -88,8 +88,9 @@ class UserUniq(BaseModel):
 class UserCreate(BaseModel):
     tg_user_id: int
 
-    class Config:
-        orm_mode = True
+
+class UserDelete(BaseModel):
+    pkid: int
 
 
 class UserBase(BaseModel):

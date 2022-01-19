@@ -10,7 +10,7 @@ from sqlalchemy.orm import relationship, lazyload
 from .base import *
 from .db import DB
 from .addr import Addr, Smac, Tokn, NFT
-from .user_uniq import UserUniq, DbUserUniqMixin
+from .user_uniq import UserUniq, DbUserUniqPkidColumn, DbUserUniqRelationship
 from .user_addr import UserAddr
 from .user_addr_tx import UserAddrTX
 from .tokn_addr import ToknAddr
@@ -19,17 +19,20 @@ __all__ = "User", "UserUniq", "UserAddr", "UserAddrTX"
 
 
 @dictattrs("pkid", "uniq", "tg_user_id", "info", "data")
-class User(DbUserUniqMixin, Base):
+class User(Base):
     __tablename__ = "user"
     __table_args__ = (
         DbInfoColumnIndex(__tablename__),
     )
 
+    pkid = DbUserUniqPkidColumn()
+
     tg_user_id = Column(Integer, nullable=False, unique=True, primary_key=False, index=True)
-    tg_user_at = Column(String, nullable=True, unique=True, primary_key=False, index=True)
 
     info = DbInfoColumn()
     data = DbDataColumn()
+
+    uniq = DbUserUniqRelationship()
 
     user_addrs = relationship(
         UserAddr,
@@ -170,15 +173,15 @@ class User(DbUserUniqMixin, Base):
         db.Session.commit()
 
     @staticmethod
-    def delete(db: DB, tg_user_id: int) -> None:
+    def delete_by_id(db: DB, tg_user_id: int) -> None:
         u: User = db.Session.query(User).where(
             User.tg_user_id == tg_user_id,
         ).one_or_none()
 
         if u is not None:
-            return u.__delete(db)
+            return u.delete(db)
         
-    def __delete(self, db: DB):
+    def delete(self, db: DB):
         for user_addr_tx in list(self.user_addr_txes):
             user_addr_tx._remove(db, self.user_addr_txes)
 

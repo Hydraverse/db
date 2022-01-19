@@ -23,3 +23,9 @@ class HyDbClient(BaseRPC):
                 **schemas.UserCreate(tg_user_id=tg_user_id).dict()
             )
         )
+
+    def delete_user(self, user_pk: int, tg_user_id: int) -> None:
+        self.post(
+            f"/user/{tg_user_id}",
+            **schemas.UserDelete(pkid=user_pk).dict()
+        )

@@ -20,16 +20,6 @@ def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
-@app.get("/user/{tg_user_id}", response_model=schemas.User)
-def read_user(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.get_user_by_tg_id(db, tg_user_id)
-
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found")
-
-    return db_user
-
-
 @app.post("/user/", response_model=schemas.User)
 def create_user(user: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.get_user_by_tg_id(db, user.tg_user_id)
@@ -38,6 +28,29 @@ def create_user(user: schemas.UserCreate, db: DB = Depends(dbase.yield_with_sess
         raise HTTPException(status_code=400, detail="Telegram ID already registered.")
 
     return crud.create_user(db=db, user=user)
+
+
+@app.post("/user/{tg_user_id}")
+def delete_user(tg_user_id: int, user: schemas.UserDelete, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.get_user_by_tg_id(db, tg_user_id)
+
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    if user.pkid != db_user.pkid:
+        raise HTTPException(status_code=403, detail="PKID Mismatch.")
+
+    db_user.delete(db)
+
+
+@app.get("/user/{tg_user_id}", response_model=schemas.User)
+def read_user(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.get_user_by_tg_id(db, tg_user_id)
+
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return db_user
 
 
 # Use as template for Addrs.
