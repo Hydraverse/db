@@ -30,7 +30,6 @@ class Block(Base):
     __table_args__ = (
         UniqueConstraint("height", "hash"),
         DbInfoColumnIndex(__tablename__, "info"),
-        DbInfoColumnIndex(__tablename__, "logs"),
     )
 
     pkid = DbPkidColumn(seq="block_seq")
@@ -105,16 +104,23 @@ class Block(Base):
             for votx, tx in txes:
                 if not tx.on_new_block(db):
                     rem += 1
+
+                    if len(tx.logs):
+                        self.logs.append(tx.logs)  # Put back the unprocessed logs.
                 else:
                     self.info["tx"].remove(votx)  # Leave behind the unprocessed TXes
 
             add -= rem
+
+        if not len(self.logs):
+            self.logs = None
 
         return add > 0
 
     def __remove_log(self, lo):
         _lg = AttrDict(lo)
         self.logs.remove(lo)
+
         del _lg.blockHash
         del _lg.blockNumber
         del _lg.transactionHash
