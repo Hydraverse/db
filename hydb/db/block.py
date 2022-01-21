@@ -3,11 +3,11 @@ from __future__ import annotations
 import asyncio
 import time
 from asyncio import CancelledError
-from typing import Optional
+from typing import Optional, List
 
 from attrdict import AttrDict
 from hydra import log
-from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_
+from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -67,7 +67,7 @@ class Block(Base):
 
         block_logs = db.rpc.searchlogs(self.height, self.height)
 
-        for txno, votx in enumerate(list(info.tx)):
+        for txno, votx in enumerate(list(info["tx"])):
             votx.n = txno  # Preserve ordering info after deletion.
 
             logs = list(filter(
@@ -96,7 +96,7 @@ class Block(Base):
                 addresses_hx.update(addrs_hx)
 
                 self.tx.append(tx)
-                info.tx.remove(votx)
+                info["tx"].remove(votx)
 
         self.info = info
 
@@ -105,7 +105,6 @@ class Block(Base):
 
         from .addr import Addr
 
-        # noinspection PyUnresolvedReferences
         addrs: List[Addr] = db.Session.query(
             Addr,
         ).where(
@@ -190,7 +189,7 @@ class Block(Base):
             log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
             return new_block
 
-        log.debug(f"Discarding block without TXes at height {new_block.height}")
+        log.debug(f"Discarding block without history entries at height {new_block.height}")
         db.Session.rollback()
 
     @staticmethod

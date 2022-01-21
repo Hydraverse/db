@@ -124,7 +124,7 @@ class Addr(Base):
                 return False
             else:
                 for addr_user in self.addr_users:
-                    addr_user.on_new_addr_hist(addr_hist)
+                    addr_user.on_new_addr_hist(db, addr_hist)
 
                 return True
 
