@@ -14,7 +14,7 @@ from sqlalchemy.orm import relationship
 from .base import *
 from .db import DB
 
-__all__ = "Block", "TX"
+__all__ = "Block",
 
 
 class LocalState:
@@ -29,36 +29,31 @@ class Block(Base):
     __tablename__ = "block"
     __table_args__ = (
         UniqueConstraint("height", "hash"),
-        DbInfoColumnIndex(__tablename__, "info"),
     )
 
     pkid = DbPkidColumn(seq="block_seq")
     height = Column(Integer, nullable=False, unique=False, primary_key=False, index=True)
     hash = Column(String(64), nullable=False, unique=True, primary_key=False, index=True)
 
-    txes = relationship(
-        "TX",
+    addr_hist = relationship(
+        "AddrHist",
         back_populates="block",
         cascade="all, delete-orphan",
-        single_parent=True
+        single_parent=True,
     )
 
     info = DbInfoColumn()
-    logs = DbDataColumn()
+    tx = DbDataColumn()
 
-    def _delete_if_unused(self, db: DB) -> bool:
-        if not len(self.txes):
-            # if not len(self.user_data):
-            log.info(f"Deleting block #{self.height} with no TXes.")
+    def _removed_hist(self, db: DB):
+        if not len(self.addr_hist):
+            log.info(f"Deleting block #{self.height} with no history.")
             db.Session.delete(self)
-            return True
-            # else:
-            #     log.info(f"Keeping block #{self.height} with no TXes and non-empty data.")
-
-        return False
 
     def on_new_block(self, db: DB) -> bool:
-        n_tx = self.info.get("nTx", -1)
+        info = Block.__get_block_info(db, self.hash)
+
+        n_tx = info.get("nTx", -1)
 
         if n_tx < 2:
             log.warning(f"Found {n_tx} TX in block, expected at least two.")
@@ -66,66 +61,100 @@ class Block(Base):
 
         vo_filt = lambda vo: hasattr(vo, "scriptPubKey") and hasattr(vo.scriptPubKey, "addresses")
 
-        txes = []
-        add = 0
-        rem = 0
+        addresses_hy = set()
+        addresses_hx = set()
+        self.tx = []
 
-        for txno, votx in enumerate(list(self.info["tx"])):
+        block_logs = db.rpc.searchlogs(self.height, self.height)
+
+        for txno, votx in enumerate(list(info.tx)):
             votx.n = txno  # Preserve ordering info after deletion.
 
-            logs = list(
-                self.__remove_log(lg)
-                for lg in filter(
-                    lambda lg_: lg_.transactionHash == votx.txid,
-                    tuple(self.logs)
-                )
-            )
+            logs = list(filter(
+                lambda lg_: lg_.transactionHash == votx.txid,
+                block_logs
+            ))
+
+            vouts_inp = {}
+            vouts_out = []
 
             if hasattr(votx, "vout"):
                 vouts_inp = Block.__get_vout_inp(db.rpc, votx)
                 vouts_out = [vout for vout in filter(vo_filt, votx.vout)]
 
-                if len(vouts_out):
-                    # noinspection PyArgumentList
-                    tx = TX(
-                        block=self,
-                        block_txno=txno,
-                        block_txid=votx.txid,
-                        vouts_inp=vouts_inp,
-                        vouts_out=vouts_out,
-                        logs=logs
-                    )
+            if len(vouts_out) or len(vouts_inp) or len(logs):
+                tx = AttrDict(
+                    block_txno=txno,
+                    block_txid=votx.txid,
+                    vouts_inp=vouts_inp,
+                    vouts_out=vouts_out,
+                    logs=logs
+                )
 
-                    txes.append((votx, tx))
+                addrs_hy, addrs_hx = Block.addrs_from_tx(tx)
+                addresses_hy.update(addrs_hy)
+                addresses_hx.update(addrs_hx)
 
-                    add += 1
+                self.tx.append(tx)
+                info.tx.remove(votx)
 
-        if add > 0:
-            for votx, tx in txes:
-                if not tx.on_new_block(db):
-                    rem += 1
+        self.info = info
 
-                    if len(tx.logs):
-                        self.logs.append(tx.logs)  # Put back the unprocessed logs.
-                else:
-                    self.info["tx"].remove(votx)  # Leave behind the unprocessed TXes
+        if not len(addresses_hy) and not len(addresses_hx):
+            return False
 
-            add -= rem
+        from .addr import Addr
 
-        if not len(self.logs):
-            self.logs = None
+        # noinspection PyUnresolvedReferences
+        addrs: List[Addr] = db.Session.query(
+            Addr,
+        ).where(
+            and_(
+                # Addr.addr_tp == Addr.Type.H,
+                or_(
+                    Addr.addr_hy.in_(addresses_hy),
+                    Addr.addr_hx.in_(addresses_hx),
+                )
+            )
+        ).all()
 
-        return add > 0
+        if not len(addrs):
+            return False
 
-    def __remove_log(self, lo):
-        _lg = AttrDict(lo)
-        self.logs.remove(lo)
+        added_history = False
 
-        del _lg.blockHash
-        del _lg.blockNumber
-        del _lg.transactionHash
-        del _lg.transactionIndex
-        return _lg
+        for addr in addrs:
+            added_history |= addr.update_info(db, block=self)
+
+        return added_history
+
+    @staticmethod
+    def addrs_from_tx(tx: AttrDict):
+        addresses_hy = set()
+        addresses_hx = set()
+
+        vo_filt = lambda vo: "scriptPubKey" in vo and "addresses" in vo["scriptPubKey"]
+
+        for vout in filter(vo_filt, tx.vouts_out):
+            addresses_hy.update(vout["scriptPubKey"]["addresses"])
+
+        for vout in filter(vo_filt, tx.vouts_inp.values()):
+            addresses_hy.update(vout["scriptPubKey"]["addresses"])
+
+        for log_ in tx.logs:
+            if "contractAddress" in log_:
+                addresses_hx.add(log_["contractAddress"])
+
+            if "from" in log_:
+                addresses_hx.add(log_["from"])
+
+            if "to" in log_:
+                addresses_hx.add(log_["to"])
+
+            for log__ in log_.log:
+                addresses_hx.add(log__["address"])
+
+        return addresses_hy, addresses_hx
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
@@ -151,8 +180,6 @@ class Block(Base):
         new_block: Block = Block(
             height=height,
             hash=bhash,
-            info=Block.__get_block_info(db, bhash),
-            logs=db.rpc.searchlogs(height, height)
         )
 
         db.Session.add(new_block)
@@ -160,25 +187,11 @@ class Block(Base):
         if new_block.on_new_block(db):
             db.Session.commit()
             db.Session.refresh(new_block)
-            log.info(f"Added block with {len(new_block.txes)} TX(es) at height {new_block.height}")
+            log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
             return new_block
 
         log.debug(f"Discarding block without TXes at height {new_block.height}")
         db.Session.rollback()
-
-    @staticmethod
-    def _on_new_addr(db: DB, addr) -> Optional[Block]:
-        """Load the latest block & related txes for addr.
-        """
-        #
-        # TODO: Implement this if preloading addresses.
-        # if addr.addr_tp == addr.Type.H:
-        #     txes = db.rpc.listtransactions(label=addr.addr_hy, count=1, skip=0, include_watchonly=True)
-        #
-        #     if not len(txes):
-        #         return
-        #
-        pass
 
     @staticmethod
     async def update_task_async(db: DB) -> None:
@@ -281,5 +294,3 @@ class Block(Base):
 
         return vout_inp
 
-
-from .tx import TX

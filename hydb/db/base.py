@@ -5,35 +5,11 @@ from sqlalchemy.orm import declarative_base
 from sqlalchemy_json import mutable_json_type
 
 __all__ = (
-    "Base", "dictattrs",
+    "Base",
     "DbPkidColumn", "DbDateCreateColumn", "DbDateUpdateColumn",
     "DbInfoColumn", "DbDataColumn",
     "DbInfoColumnIndex",
 )
-
-
-def dictattrs(*attrs):
-    def _asdict(self, attrs_) -> AttrDict:
-        def _attr_conv(s, attr):
-            attr = getattr(s, attr)
-            if hasattr(attr, "_asdict"):
-                return attr._asdict()
-            if isinstance(attr, (list, tuple)):
-                return [_attr_conv(attr, a) for a in attr]
-            return attr
-
-        return AttrDict({
-            attr: _attr_conv(self, attr)
-            for attr in attrs_
-        })
-
-    def _cls(cls):
-        cls.__dictattrs__ = getattr(cls, "__dictattrs__", ()) + attrs
-        cls._asdict = lambda slf, *atrs_: _asdict(slf, tuple(cls.__dictattrs__) + atrs_)
-
-        return cls
-
-    return _cls
 
 
 class Base:
@@ -45,8 +21,8 @@ class Base:
 
 Base = declarative_base(cls=Base)
 
-DbInfoColumn = lambda: Column(mutable_json_type(dbtype=JSONB, nested=True), nullable=False, default={})
-DbDataColumn = lambda: Column(mutable_json_type(dbtype=JSONB, nested=True), nullable=True)
+DbInfoColumn = lambda default=...: Column(mutable_json_type(dbtype=JSONB, nested=True), nullable=False, default={} if default is ... else default)
+DbDataColumn = lambda default=None: Column(mutable_json_type(dbtype=JSONB, nested=True), nullable=True, default=default)
 
 
 def DbInfoColumnIndex(table_name: str, column_name: str = "info"):
@@ -58,7 +34,7 @@ def DbInfoColumnIndex(table_name: str, column_name: str = "info"):
 
 
 DbPkidColumn = lambda seq="pkid_seq": Column(
-    Integer, Sequence(seq, metadata=Base.metadata), nullable=False, primary_key=True
+    Integer, Sequence(seq, metadata=Base.metadata), nullable=False, primary_key=True, unique=True
 )
 
 

@@ -6,21 +6,20 @@ import binascii
 
 from attrdict import AttrDict
 from hydra import log
+from hydra.app.call import Call
 from hydra.rpc.hydra_rpc import BaseRPC
-from sqlalchemy import Column, String, Enum, Integer, BigInteger
+from sqlalchemy import Column, String, Enum, Integer
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
 from .base import *
 from .db import DB
-from .block import Block, TX
-from .addr_tx import AddrTX
-from .user_addr_tx import UserAddrTX
+from .block import Block
+from .addr_hist import AddrHist
 
-__all__ = "Addr", "AddrTX", "Smac", "Tokn", "NFT"
+__all__ = "Addr", "AddrHist"
 
 
-@dictattrs("pkid", "date_create", "date_update", "addr_tp", "addr_hx", "addr_hy", "block_h", "info")
 class Addr(Base):
     __tablename__ = "addr"
     __table_args__ = (
@@ -43,13 +42,24 @@ class Addr(Base):
                 None
             )
 
+    class ContractMethodID:
+        name = Call.method_id_from_sig("name()")
+        symbol = Call.method_id_from_sig("symbol()")
+        decimals = Call.method_id_from_sig("decimals()")
+        totalSupply = Call.method_id_from_sig("totalSupply()")
+        balanceOf = Call.method_id_from_sig("balanceOf(address)")
+        supportsInterface = Call.method_id_from_sig("supportsInterface(bytes4)")
+        tokenURI = Call.method_id_from_sig("tokenURI(uint256)")
+        ownerOf = Call.method_id_from_sig("ownerOf(uint256)")
+        tokenOfOwnerByIndex = Call.method_id_from_sig("tokenOfOwnerByIndex(address,uint256)")
+        tokenByIndex = Call.method_id_from_sig("tokenByIndex(uint256)")
+        isMinter = Call.method_id_from_sig("isMinter(address)")
+
     pkid = DbPkidColumn()
-    date_create = DbDateCreateColumn()
-    date_update = DbDateUpdateColumn()
-    addr_tp = Column(Enum(Type, validate_strings=True), nullable=False, index=True)
-    addr_hx = Column(String(40), nullable=False, unique=True, index=True)
-    addr_hy = Column(String(34), nullable=False, unique=True, index=True)
-    block_h = Column(Integer, nullable=True)
+    addr_hx = Column(String(40), nullable=False, unique=True, primary_key=True)
+    addr_hy = Column(String(34), nullable=False, unique=True, primary_key=True)
+    addr_tp = Column(Enum(Type, validate_strings=True), nullable=False)
+    block_h = Column(Integer, nullable=False, default=-1)
     info = DbInfoColumn()
 
     addr_users = relationship(
@@ -59,118 +69,101 @@ class Addr(Base):
         single_parent=True,
     )
 
-    addr_txes = relationship(
-        "AddrTX",
+    addr_hist = relationship(
+        "AddrHist",
         back_populates="addr",
         cascade="all, delete-orphan",
         single_parent=True,
     )
-
-    addr_tokns = relationship(
-        "ToknAddr",
-        back_populates="addr",
-        cascade="all, delete-orphan",
-        single_parent=True,
-    )
-
-    __mapper_args__ = {
-        "polymorphic_identity": Type.H,
-        "polymorphic_on": addr_tp,
-        "with_polymorphic": "*",
-    }
-
-    @staticmethod
-    def __make(addr_tp: Type, addr_hx: str, addr_hy: str, **kwds) -> [Addr, Smac, Tokn, NFT]:
-        if addr_tp == Addr.Type.H:
-            return Addr(addr_hx=addr_hx, addr_hy=addr_hy, **kwds)
-        elif addr_tp == Addr.Type.S:
-            return Smac(addr_hx=addr_hx, addr_hy=addr_hy, **kwds)
-        elif addr_tp == Addr.Type.T:
-            return Tokn(addr_hx=addr_hx, addr_hy=addr_hy, **kwds)
-        elif addr_tp == Addr.Type.N:
-            return NFT(addr_hx=addr_hx, addr_hy=addr_hy, **kwds)
-        else:
-            log.warning(f"Unrecognized Addr.Type '{addr_tp}'")
-            return Addr(addr_tp=addr_tp, addr_hx=addr_hx, addr_hy=addr_hy, **kwds)
 
     def __str__(self):
-        return self.addr_hy
+        return self.addr_hy if self.addr_tp == Addr.Type.H else self.addr_hx
 
-    def on_new_addr_tx(self, db: DB, addr_tx: AddrTX) -> bool:
-        tx = addr_tx.tx
-        if self.block_h != tx.block.height:
-            self.block_h = tx.block.height
-            self.on_new_block(db, tx.block)
+    def update_info(self, db: DB, block: Optional[Block]) -> bool:
+        height = block.height if block is not None else db.rpc.getblockcount()
 
-        self.on_new_tx(db, tx)
-
-        has_users = False
-        uatxes = []
-
-        for addr_user in self.addr_users:
-            uatxes.append(UserAddrTX(user=addr_user.user, addr_tx=addr_tx))
-
-        for uatx in uatxes:
-            if uatx.on_new_addr_tx(db):
-                has_users = True
-
-        return has_users
-
-    def on_new_block(self, db: DB, block: Block):
-        self.update_balances(db, tx=None)
-
-    def on_new_tx(self, db: DB, tx: TX):
-        self.update_balances(db, tx)
-
-    def update_balances(self, db: DB, tx: Optional[TX]):
-        if tx is not None:
-            return  # Only update info & balance once per new block.
-
-        add = False
-        balanc = ...
+        if self.block_h == height:
+            return False
 
         try:
             if self.addr_tp == Addr.Type.H:
                 info = db.rpcx.get_address(self.addr_hy)
             else:
                 info = db.rpcx.get_contract(self.addr_hx)
-                del info["addressHex"]
+                del info.addressHex
 
                 # TODO: Determine why this is different on explorer and how to acquire!
                 #   e.g. 09188dbfe8e915e6a3c42842b079432007a3673f
                 #        -> e2vb5jpC2hodZuqRefGd7XVWPZQEbqd8uk (explorer api)
                 #        -> Ta8uUv4ha1krJeDB1kcLWGR42ShiA3Fpxy (fromhexaddress)
-                # del info["address"]
+                # del info.address
 
         except BaseRPC.Exception as exc:
             log.critical(f"Addr RPC error: {str(exc)}", exc_info=exc)
-            return None
+            return False
 
-        # NOTE: If loading token balances from Explorer, keep this data.
-        #       Current decision is to load directly from local blockchain db.
-        #       Leaves behind any qrc721 balances.
-        if "qrc20Balances" in info:
-            del info["qrc20Balances"]
+        self.block_h = height
 
         if "qrc721Balances" in info:
-            del info["qrc721Balances"]
+            for qrc721entry in info.qrc721Balances:
+                qrc721entry.uris = self.nft_uris_from(db, qrc721entry.addressHex, qrc721entry.count)
 
-        if "qrc20" in info:
-            del info.qrc20.name
-            del info.qrc20.symbol
-            del info.qrc20.decimals
-            del info.qrc20.totalSupply
-            # Leaves behind 'holders', 'version', 'transactions'
-
-        if "qrc721" in info:
-            del info.qrc721
+        addr_hist: Optional[AddrHist] = None
 
         if info != self.info:
-            self.info = info
-            add = True
+            if block is not None:
+                addr_hist = AddrHist(block=block, addr=self, info=dict(self.info))
 
-        if add:
-            db.Session.add(self)
+            self.info = info
+
+        db.Session.add(self)
+
+        if addr_hist is not None:
+            if not len(self.addr_users):  # Should never happen, but...
+                db.Session.delete(addr_hist)
+                return False
+            else:
+                for addr_user in self.addr_users:
+                    addr_user.on_new_addr_hist(addr_hist)
+
+                return True
+
+        return False
+
+    def nft_uris_from(self, db: DB, nft_addr_hx: str, count: int) -> dict:
+        uris = {}
+
+        for token_no in range(count):
+            r = db.rpc.callcontract(
+                nft_addr_hx,
+                Addr.ContractMethodID.tokenOfOwnerByIndex
+                + self.addr_hx.rjust(64, "0")
+                + hex(token_no)[2:].rjust(64, "0")
+            )
+
+            if r.executionResult.excepted != "None":
+                log.warning(f"Contract call tokenOfOwnerByIndex failed: {r.executionResult.excepted}")
+                log.debug(f"Contract call failed (full result): {r}")
+            else:
+                token_id: str = hex(int(r.executionResult.output, 16))[2:]
+
+                r = db.rpc.callcontract(
+                    nft_addr_hx,
+                    Addr.ContractMethodID.tokenURI
+                    + r.executionResult.output
+                )
+
+                if r.executionResult.excepted != "None":
+                    log.warning(f"Contract call tokenURI failed: {r.executionResult.excepted}")
+                    log.debug(f"Contract call failed (full result): {r}")
+                else:
+                    token_uri = binascii.unhexlify(
+                        r.executionResult.output
+                    ).replace(b"\x00", b"").decode("utf-8")
+
+                    uris[token_id] = token_uri
+
+        return uris
 
     # noinspection PyUnusedLocal
     def __ensure_imported(self, db: DB):
@@ -180,48 +173,29 @@ class Addr(Base):
                 db.rpc.importaddress(self.addr_hy, self.addr_hy)
 
     def __on_new_addr(self, db: DB):
-        self.update_balances(db, tx=None)
-        db.Session.add(self)
+        self.update_info(db, block=None)
         db.Session.commit()
         db.Session.refresh(self)
-        Block._on_new_addr(db, self)
 
     def _removed_user(self, db: DB):
         if not len(self.addr_users):
-            for addr_tx in list(self.addr_txes):
-                addr_tx._remove(db, self.addr_txes)
-
-            for addr_tokn in list(self.addr_tokns):
-                addr_tokn._remove(db, self.addr_tokns)
+            for addr_hist in list(self.addr_hist):
+                addr_hist._remove(db, self.addr_hist)
 
             log.info(f"Deleting {self.addr_tp.value} address {str(self)} with no users.")
             db.Session.delete(self)
+        else:
+            for addr_hist in list(self.addr_hist):
+                addr_hist._removed_user(db)
 
     @staticmethod
-    def get(db: DB, address: str, create=True) -> [Addr, Smac, Tokn, NFT]:
-        addr_tp, addr_hx, addr_hy, addr_attr = Addr.normalize(db, address)
+    def get(db: DB, address: str, create=True) -> Addr:
+        addr_tp, addr_hx, addr_hy = Addr.normalize(db, address)
 
         try:
-            if addr_tp == Addr.Type.T:
-                q: Tokn = db.Session.query(Tokn).where(
-                    Tokn.addr_hx == addr_hx
-                )
-            elif addr_tp == Addr.Type.N:
-                q: NFT = db.Session.query(NFT).where(
-                    NFT.addr_hx == addr_hx
-                )
-            elif addr_tp == Addr.Type.S:
-                q: Smac = db.Session.query(Smac).where(
-                    Smac.addr_hx == addr_hx
-                )
-            else:
-                if addr_tp != Addr.Type.H:
-                    log.warning(f"Unknown Addr.normalize() type '{addr_tp}'")
-
-                q: Addr = db.Session.query(Addr).where(
-                    Addr.addr_hx == addr_hx,
-                    Addr.addr_tp == addr_tp
-                )
+            q = db.Session.query(Addr).where(
+                Addr.addr_hx == addr_hx
+            )
 
             if not create:
                 return q.one_or_none()
@@ -229,7 +203,8 @@ class Addr(Base):
             return q.one()
 
         except NoResultFound:
-            addr: [Addr, Smac, Tokn, NFT] = Addr.__make(addr_tp, addr_hx, addr_hy, **addr_attr)
+            # noinspection PyArgumentList
+            addr: Addr = Addr(addr_tp=addr_tp, addr_hx=addr_hx, addr_hy=addr_hy)
             addr.__on_new_addr(db)
             return addr
 
@@ -241,12 +216,11 @@ class Addr(Base):
 
     @staticmethod
     @lru_cache(maxsize=None)
-    def normalize(db: DB, address: str) -> Tuple[Addr.Type, str, str, AttrDict]:
+    def normalize(db: DB, address: str) -> Tuple[Addr.Type, str, str]:
         """Normalize an input address into a tuple of (Addr.Type, addr_hex, addr_hydra).
         Or raise ValueError.
         """
         addr_tp = Addr.Type.by_len(address)
-        attrs = AttrDict()
 
         if addr_tp is None:
             raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (bad length)")
@@ -271,7 +245,7 @@ class Addr(Base):
 
                 addr_hy = db.rpc.fromhexaddress(addr_hx)
 
-                addr_tp, attrs = Addr.__validate_contract(db, addr_hx)
+                addr_tp = Addr.__validate_contract(db, addr_hx)
 
             else:
                 raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (bad type)")
@@ -280,52 +254,46 @@ class Addr(Base):
             log.critical(f"Addr normalize RPC error: {str(exc)}", exc_info=exc)
             raise
 
-        return addr_tp, addr_hx, addr_hy, attrs
+        return addr_tp, addr_hx, addr_hy
 
     @staticmethod
-    def __validate_contract(db: DB, addr_hx: str) -> Tuple[Addr.Type, AttrDict]:
+    def __validate_contract(db: DB, addr_hx: str) -> Addr.Type:
 
-        sci = AttrDict()
         addr_tp = Addr.Type.S
 
         try:
             # Raises BaseRPC.Exception if address does not exist
-            r = db.rpc.callcontract(addr_hx, Smac.ContractMethodID.name)
+            r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.name)
         except BaseRPC.Exception:
             # Safest assumption is that this is actually a HYDRA hex address
-            return Addr.Type.H, sci
+            return Addr.Type.H
+
+        if r.executionResult.excepted != "None":
+            return Addr.Type.H  # Dunno?
+
+        r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.symbol)
 
         if r.executionResult.excepted == "None":
-            sci.name = Addr.__sc_out_str(
-                r.executionResult.output[128:]
-            )
+            # sci.symb = Addr.__sc_out_str(
+            #     r.executionResult.output[128:]
+            # )
 
-        r = db.rpc.callcontract(addr_hx, Smac.ContractMethodID.symbol)
-
-        if r.executionResult.excepted == "None":
-            sci.symb = Addr.__sc_out_str(
-                r.executionResult.output[128:]
-            )
-
-            r = db.rpc.callcontract(addr_hx, Smac.ContractMethodID.totalSupply)
+            r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.totalSupply)
 
             if r.executionResult.excepted == "None":
-                sci.supt = int(r.executionResult.output, 16)
+                # sci.supt = int(r.executionResult.output, 16)
 
-                r = db.rpc.callcontract(addr_hx, Smac.ContractMethodID.decimals)
+                r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.decimals)
 
                 if r.executionResult.excepted == "None":
-                    sci.deci = int(r.executionResult.output, 16)
+                    # sci.deci = int(r.executionResult.output, 16)
                     addr_tp = Addr.Type.T
                 else:
                     # NFT contracts have no decimals()
                     addr_tp = Addr.Type.N
 
-        return addr_tp, sci
+        return addr_tp
 
     @staticmethod
     def __sc_out_str(val):
         return binascii.unhexlify(val).replace(b"\x00", b"").decode("utf-8")
-
-
-from .smac import Smac, Tokn, NFT

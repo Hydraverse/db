@@ -11,7 +11,6 @@ from hydb.util import namegen
 __all__ = "UserUniq", "DbUserUniqPkidColumn", "DbUserUniqRelationship"
 
 
-@dictattrs("pkid", "date_create", "date_update", "name", "time", "nano", "info", "data")
 class UserUniq(Base):
     __tablename__ = "user_uniq"
     __table_args__ = (

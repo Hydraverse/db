@@ -1,3 +1,4 @@
+from datetime import datetime
 import enum
 from typing import Optional, List, Generic, TypeVar
 
@@ -22,6 +23,27 @@ class EnumModel(GenericModel, Generic[EnumTypeVar]):
         return values
 
 
+class Block(BaseModel):
+    pkid: int
+    height: int
+    hash: str
+    info: AttrDict
+    tx: List[AttrDict]
+
+    class Config:
+        orm_mode = True
+
+
+class AddrHist(BaseModel):
+    pkid: int
+    block: Block
+    addr_pk: int
+    info: AttrDict
+
+    class Config:
+        orm_mode = True
+
+
 class Addr(BaseModel):
     class Type(str, enum.Enum):
         H = "HYDRA"
@@ -30,96 +52,11 @@ class Addr(BaseModel):
         T = "token"
 
     pkid: int
-    addr_tp: EnumModel[Type]
     addr_hx: str
     addr_hy: str
-    block_h: Optional[int]
-    balance: Optional[int]
+    addr_tp: EnumModel[Type]
+    block_h: int
     info: AttrDict
-
-    class Config:
-        orm_mode = True
-
-
-class Smac(Addr):
-    name: str
-
-    class Config:
-        orm_mode = True
-
-
-class Tokn(Smac):
-    symb: str
-    supt: int
-    deci: Optional[int]
-
-    # tokn_addrs: List[ToknAddr]
-
-    class Config:
-        orm_mode = True
-
-
-class NFT(Tokn):
-
-    class Config:
-        orm_mode = True
-
-
-class ToknAddr(BaseModel):
-    tokn: Tokn
-    addr: Addr
-    balance: int
-    nft_uri: Optional[dict]
-
-    class Config:
-        orm_mode = True
-
-
-class TXBase(BaseModel):
-    pkid: int
-    block_pkid: int
-    block_txno: int
-    block_txid: str
-    vouts_inp: AttrDict
-    vouts_out: AttrDict
-    logs: AttrDict
-
-    class Config:
-        orm_mode = True
-
-
-class AddrTX(BaseModel):
-    pkid: int
-    addr_pk: int
-    tx: TXBase
-
-    class Config:
-        orm_mode = True
-
-
-class TX(TXBase):
-    addr_txes: List[AddrTX]
-
-    class Config:
-        orm_mode = True
-
-
-class Block(BaseModel):
-    pkid: int
-    height: int
-    hash: str
-    info: AttrDict
-    logs: AttrDict
-
-    txes: List[TX]
-
-    class Config:
-        orm_mode = True
-
-
-class UserAddrTX(BaseModel):
-    user_pk: int
-    addr_tx: AddrTX
 
     class Config:
         orm_mode = True
@@ -144,8 +81,6 @@ class UserDelete(BaseModel):
 
 
 class UserBase(BaseModel):
-    pkid: int
-
     uniq: UserUniq
 
     tg_user_id: int
@@ -156,9 +91,26 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
+class UserAddrHist(BaseModel):
+    user_addr_pk: int
+    date_create: datetime
+    garbage: bool
+    block_c: int
+    addr_hist: AddrHist
+    data: Optional[AttrDict]
+
+    class Config:
+        orm_mode = True
+
+
 class UserAddr(BaseModel):
-    user_pk: int
+    pkid: int
+    date_create: datetime
+    date_update: Optional[datetime]
+    block_c: int
     addr: Addr
+
+    user_addr_hist: Optional[List[UserAddrHist]]
 
     class Config:
         orm_mode = True
@@ -172,18 +124,8 @@ class UserAddrDel(BaseModel):
     addr_pk: int
 
 
-class UserTokn(BaseModel):
-    addr: Tokn
-
-    class Config:
-        orm_mode = True
-
-
 class User(UserBase):
     user_addrs: List[UserAddr]
-    user_tokns: List[UserTokn]
-
-    user_addr_txes: List[UserAddrTX]
 
     class Config:
         orm_mode = True

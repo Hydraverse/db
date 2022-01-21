@@ -41,10 +41,11 @@ class HyDb(HydraApp):
 
         return Block.update_task(self.db)
 
-    # noinspection PyMethodMayBeStatic,PyUnresolvedReferences
+    # noinspection PyUnresolvedReferences,PyMethodMayBeStatic
     def shell(self):
         import sys, traceback, code
-        from hydb.db import DB, Addr, Smac, Tokn, TX, AddrTX, User, UserAddr, UserAddrTX, Block
+        from hydra.rpc.base import BaseRPC
+        from hydb import db as models
         from hydb.api.client import HyDbClient, schemas
         client = HyDbClient()
         code.interact(local=locals())
@@ -57,5 +58,3 @@ class HyDbTest(Test):
     def test_0_hydb_runnable(self):
         self.assertHydraAppIsRunnable(HyDb, "-h")
 
-    def test_1_hydb_run_default(self):
-        self.assertHydraAppIsRunnable(HyDb)
