@@ -78,7 +78,8 @@ class UserAddr(Base):
             return q.one()
 
         except NoResultFound:
-            ua = UserAddr(user=user, addr= addr)
+            # noinspection PyArgumentList
+            ua = UserAddr(user=user, addr=addr)
             db.Session.add(ua)
             db.Session.commit()
             db.Session.refresh(ua)

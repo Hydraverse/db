@@ -28,7 +28,7 @@ class Block(BaseModel):
     height: int
     hash: str
     info: AttrDict
-    tx: List[AttrDict]
+    tx: AttrDict
 
     class Config:
         orm_mode = True

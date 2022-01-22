@@ -28,6 +28,7 @@ class DB:
     address: str
     privkey: str
     fernet: Fernet
+    debug: bool
 
     CONF = AttrDict(
         url=f"postgresql://hyve:hyve@localhost/hyve",
@@ -35,10 +36,12 @@ class DB:
         address="(HYDRA address owned by db)",
         privkey="(Private key for above address)",
         fernet=lambda: Fernet.generate_key(),
+        debug=True,
     )
 
     def __init__(self):
         conf = Config.get(DB)
+        self.debug = conf.get("debug", False)
         self.url = conf.url
         self.wallet = conf.wallet
 

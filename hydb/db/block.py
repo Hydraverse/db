@@ -51,54 +51,18 @@ class Block(Base):
             db.Session.delete(self)
 
     def on_new_block(self, db: DB) -> bool:
-        info = Block.__get_block_info(db, self.hash)
-
-        n_tx = info.get("nTx", -1)
-
-        if n_tx < 2:
-            log.warning(f"Found {n_tx} TX in block, expected at least two.")
-            return False
-
-        vo_filt = lambda vo: hasattr(vo, "scriptPubKey") and hasattr(vo.scriptPubKey, "addresses")
+        info, txes = Block.__get_block_info(db, self.height, self.hash)
 
         addresses_hy = set()
         addresses_hx = set()
-        self.tx = []
 
-        block_logs = db.rpc.searchlogs(self.height, self.height)
-
-        for txno, votx in enumerate(list(info["tx"])):
-            votx.n = txno  # Preserve ordering info after deletion.
-
-            logs = list(filter(
-                lambda lg_: lg_.transactionHash == votx.txid,
-                block_logs
-            ))
-
-            vouts_inp = {}
-            vouts_out = []
-
-            if hasattr(votx, "vout"):
-                vouts_inp = Block.__get_vout_inp(db.rpc, votx)
-                vouts_out = [vout for vout in filter(vo_filt, votx.vout)]
-
-            if len(vouts_out) or len(vouts_inp) or len(logs):
-                tx = AttrDict(
-                    block_txno=txno,
-                    block_txid=votx.txid,
-                    vouts_inp=vouts_inp,
-                    vouts_out=vouts_out,
-                    logs=logs
-                )
-
-                addrs_hy, addrs_hx = Block.addrs_from_tx(tx)
-                addresses_hy.update(addrs_hy)
-                addresses_hx.update(addrs_hx)
-
-                self.tx.append(tx)
-                info["tx"].remove(votx)
-
-        self.info = info
+        for txid in info.transactions:
+            tx = txes[txid]
+            for vio in (tx.inputs + tx.outputs):
+                if "addressHex" in vio:
+                    addresses_hx.add(vio.addressHex)
+                elif "address" in vio:
+                    addresses_hy.add(vio.address)
 
         if not len(addresses_hy) and not len(addresses_hx):
             return False
@@ -122,38 +86,13 @@ class Block(Base):
 
         added_history = False
 
+        self.info = info
+        self.tx = txes
+
         for addr in addrs:
             added_history |= addr.update_info(db, block=self)
 
         return added_history
-
-    @staticmethod
-    def addrs_from_tx(tx: AttrDict):
-        addresses_hy = set()
-        addresses_hx = set()
-
-        vo_filt = lambda vo: "scriptPubKey" in vo and "addresses" in vo["scriptPubKey"]
-
-        for vout in filter(vo_filt, tx.vouts_out):
-            addresses_hy.update(vout["scriptPubKey"]["addresses"])
-
-        for vout in filter(vo_filt, tx.vouts_inp.values()):
-            addresses_hy.update(vout["scriptPubKey"]["addresses"])
-
-        for log_ in tx.logs:
-            if "contractAddress" in log_:
-                addresses_hx.add(log_["contractAddress"])
-
-            if "from" in log_:
-                addresses_hx.add(log_["from"])
-
-            if "to" in log_:
-                addresses_hx.add(log_["to"])
-
-            for log__ in log_.log:
-                addresses_hx.add(log__["address"])
-
-        return addresses_hy, addresses_hx
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
@@ -268,28 +207,20 @@ class Block(Base):
         LocalState.hash = chain_hash
 
     @staticmethod
-    def __get_block_info(db: DB, block_hash: str):
-        info = db.rpc.getblock(block_hash, verbosity=2)
+    def __get_block_info(db: DB, block_height: int, block_hash: str):
+        info = db.rpcx.get_block(block_hash)
 
-        info.conf = info.confirmations
-        del info.confirmations
+        if info.height != block_height or info.hash != block_hash:
+            raise ValueError(f"Block info mismatch at height {block_height}/{info.height}")
+
         del info.hash
         del info.height
 
-        return info
+        tx = {}
 
-    @staticmethod
-    def __get_vout_inp(rpc, tx) -> dict:
-        vout_inp = {}
+        for n, transaction in enumerate(info.transactions):
+            tx[transaction] = db.rpcx.get_tx(transaction)
+            tx[transaction].n = n
 
-        if hasattr(tx, "vin"):
-            for vin in filter(lambda vin_: hasattr(vin_, "txid"), tx.vin):
-
-                vin_rawtx = rpc.getrawtransaction(vin.txid, False)
-
-                vin_rawtx_decoded = rpc.decoderawtransaction(vin_rawtx, True)
-
-                vout_inp[vin.txid] = vin_rawtx_decoded.vout[vin.vout]
-
-        return vout_inp
+        return info, tx
 

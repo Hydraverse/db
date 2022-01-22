@@ -4,7 +4,6 @@ from functools import lru_cache
 from typing import Optional, Tuple
 import binascii
 
-from attrdict import AttrDict
 from hydra import log
 from hydra.app.call import Call
 from hydra.rpc.hydra_rpc import BaseRPC
@@ -110,7 +109,7 @@ class Addr(Base):
 
         addr_hist: Optional[AddrHist] = None
 
-        if info != self.info:
+        if info != self.info or (db.debug and block is not None):
             if block is not None:
                 addr_hist = AddrHist(block=block, addr=self, info=dict(self.info))
 
