@@ -47,8 +47,15 @@ class HyDb(HydraApp):
         from hydra.rpc.base import BaseRPC
         from hydb import db as models
         from hydb.api.client import HyDbClient, schemas
+        rpc = self.rpc
+        xrpc = self.db.rpcx
+        db = self.db
         client = HyDbClient()
-        code.interact(local=locals())
+        code.interact(
+            banner=f"Hydra DB Shell:\n  db   = {db}\n  rpc  = {rpc}\n  xrpc = {xrpc}\n",
+            exitmsg="",
+            local=locals(),
+        )
         exit(0)
 
 

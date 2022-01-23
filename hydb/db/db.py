@@ -98,6 +98,9 @@ class DB:
         self.rpcx = ExplorerRPC(mainnet=self.rpc.mainnet)
         self.__init_wallet()
 
+    def __repr__(self):
+        return f"{self.__class__.__name__}(url=\"{self.url}\")"
+
     def __hash__(self):
         return hash(self.url + self.rpc.url)
 
