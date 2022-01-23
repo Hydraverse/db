@@ -28,10 +28,26 @@ class Block(BaseModel):
     height: int
     hash: str
     info: AttrDict
-    tx: AttrDict
+    tx: List[AttrDict]
 
     class Config:
         orm_mode = True
+
+    def filter_tx(self, address: str):
+        return filter(
+            lambda tx: len(tuple(filter(
+                lambda txi:
+                ("addressHex" in txi and txi["addressHex"] == address) or
+                ("address" in txi and txi["address"] == address) or
+                ("receipt" in txi and (
+                        (txi["receipt"].get("sender", ...) == address) or
+                        (txi["receipt"].get("contractAddressHex", ...) == address) or
+                        (address in tuple(logi.get("addressHex") for logi in txi["receipt"].get("logs", [])))
+                )),
+                tx.get("inputs", []) + tx.get("outputs", [])
+            ))) > 0,
+            self.tx
+        )
 
 
 class AddrHist(BaseModel):

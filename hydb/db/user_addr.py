@@ -45,11 +45,8 @@ class UserAddr(Base):
 
         db.Session.add(user_addr_hist)
 
-        blocks_mined_prv = addr_hist.info.get("blocksMined", 0)
-        blocks_mined_cur = self.addr.info.get("blocksMined", blocks_mined_prv)
-
-        if blocks_mined_cur > blocks_mined_prv:
-            self.block_c += blocks_mined_cur - blocks_mined_prv
+        if addr_hist.block.info.get("miner", "") == self.addr.addr_hy:
+            self.block_c += 1
             db.Session.add(self)
 
     def _remove(self, db: DB, user_addrs):

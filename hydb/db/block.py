@@ -5,9 +5,8 @@ import time
 from asyncio import CancelledError
 from typing import Optional, List
 
-from attrdict import AttrDict
 from hydra import log
-from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_
+from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -21,7 +20,7 @@ class LocalState:
     # Testnet blocks:
     # 160387 (160388 is HYDRA SC TX + minting two tokens to sender)
     # 160544 (160545 is HYDRA TX)
-    height = 0
+    height = 160387
     hash = ""
 
 
@@ -56,13 +55,23 @@ class Block(Base):
         addresses_hy = set()
         addresses_hx = set()
 
-        for txid in info.transactions:
-            tx = txes[txid]
-            for vio in (tx.inputs + tx.outputs):
+        for tx in txes:
+            for vio in (tx.get("inputs", []) + tx.get("outputs", [])):
                 if "addressHex" in vio:
                     addresses_hx.add(vio.addressHex)
                 elif "address" in vio:
                     addresses_hy.add(vio.address)
+
+                if "receipt" in vio:
+                    a = vio.receipt.get("sender", ...)
+                    if a is not ...: addresses_hy.add(a)
+                    a = vio.receipt.get("contractAddressHex", ...)
+                    if a is not ...: addresses_hx.add(a)
+
+                    addresses_hx.update(filter(
+                        lambda adr: adr is not ...,
+                        (logi.get("addressHex", ...) for logi in vio.receipt.get("logs", []))
+                    ))
 
         if not len(addresses_hy) and not len(addresses_hx):
             return False
@@ -94,6 +103,22 @@ class Block(Base):
 
         return added_history
 
+    def filter_tx(self, address: str):
+        return filter(
+            lambda tx: len(tuple(filter(
+                lambda txi:
+                    ("addressHex" in txi and txi["addressHex"] == address) or
+                    ("address" in txi and txi["address"] == address) or
+                    ("receipt" in txi and (
+                        (txi["receipt"].get("sender", ...) == address) or
+                        (txi["receipt"].get("contractAddressHex", ...) == address) or
+                        (address in tuple(logi.get("addressHex") for logi in txi["receipt"].get("logs", [])))
+                    )),
+                tx.get("inputs", []) + tx.get("outputs", [])
+            ))) > 0,
+            self.tx
+        )
+
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
         try:
@@ -120,9 +145,8 @@ class Block(Base):
             hash=bhash,
         )
 
-        db.Session.add(new_block)
-
         if new_block.on_new_block(db):
+            db.Session.add(new_block)
             db.Session.commit()
             db.Session.refresh(new_block)
             log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
@@ -162,8 +186,7 @@ class Block(Base):
     @staticmethod
     def update_task(db: DB) -> None:
         try:
-            if LocalState.height == 0:
-                Block.__update_init(db)
+            Block.__update_init(db)
 
             while 1:
                 Block.update(db)
@@ -184,7 +207,8 @@ class Block(Base):
             LocalState.height = block.height
             LocalState.hash = block.hash
         else:
-            LocalState.height = db.rpc.getblockcount() - 1
+            if LocalState.height == 0:
+                LocalState.height = db.rpc.getblockcount() - 1
 
     @staticmethod
     def update(db: DB) -> None:
@@ -195,7 +219,7 @@ class Block(Base):
         log.debug(f"Poll: chain={chain_height} local={LocalState.height}")
 
         if chain_height == LocalState.height:
-            if chain_hash != LocalState.hash:
+            if LocalState.hash and chain_hash != LocalState.hash:
                 log.warning(f"Fork detected at height {chain_height}: {chain_hash} != {LocalState.hash}")
             else:
                 return
@@ -216,11 +240,10 @@ class Block(Base):
         del info.hash
         del info.height
 
-        tx = {}
+        tx = []
 
-        for n, transaction in enumerate(info.transactions):
-            tx[transaction] = db.rpcx.get_tx(transaction)
-            tx[transaction].n = n
+        for txid in info.transactions:
+            tx.append(db.rpcx.get_tx(txid))
 
         return info, tx
 

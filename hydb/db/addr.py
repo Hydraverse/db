@@ -109,19 +109,20 @@ class Addr(Base):
 
         addr_hist: Optional[AddrHist] = None
 
-        if info != self.info or (db.debug and block is not None):
-            if block is not None:
-                addr_hist = AddrHist(block=block, addr=self, info=dict(self.info))
+        if block is not None:
+            addr_hist = AddrHist(block=block, addr=self, info=dict(self.info))
 
+        if self.info != info:
             self.info = info
-
-        db.Session.add(self)
+            db.Session.add(self)
 
         if addr_hist is not None:
             if not len(self.addr_users):  # Should never happen, but...
                 db.Session.delete(addr_hist)
                 return False
             else:
+                db.Session.add(addr_hist)
+
                 for addr_user in self.addr_users:
                     addr_user.on_new_addr_hist(db, addr_hist)
 
