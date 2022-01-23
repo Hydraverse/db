@@ -6,6 +6,11 @@ from attrdict import AttrDict
 from pydantic import BaseModel, root_validator
 from pydantic.generics import GenericModel
 
+
+class ServerInfo(BaseModel):
+    mainnet: bool
+
+
 EnumTypeVar = TypeVar("EnumTypeVar")
 
 

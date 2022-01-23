@@ -20,6 +20,11 @@ def say_hello(name: str):
     return {"message": f"Hello {name}"}
 
 
+@app.get("/server/info", response_model=schemas.ServerInfo)
+def server_info():
+    return crud.server_info(db=dbase)
+
+
 @app.post("/user/", response_model=schemas.User)
 def user_add(user: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get(db, user.tg_user_id)

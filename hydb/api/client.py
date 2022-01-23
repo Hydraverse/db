@@ -13,6 +13,9 @@ class HyDbClient(BaseRPC):
         conf = Config.get(HyDbClient, defaults=True, save_defaults=True)
         super().__init__(url=conf.url)
 
+    def server_info(self) -> schemas.ServerInfo:
+        return schemas.ServerInfo(**self.get("/server/info"))
+
     def user_get(self, tg_user_id: int) -> schemas.User:
         return schemas.User(**self.get(f"/user/{tg_user_id}"))
 

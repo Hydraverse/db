@@ -5,6 +5,10 @@ from hydb import db as models
 from . import schemas
 
 
+def server_info(db: DB) -> schemas.ServerInfo:
+    return schemas.ServerInfo(mainnet=db.rpc.mainnet)
+
+
 def user_get(db: DB, tg_user_id: int) -> Optional[models.User]:
     return db.Session.query(
         models.User
