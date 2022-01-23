@@ -12,6 +12,7 @@ from sqlalchemy.orm import relationship
 
 from .base import *
 from .db import DB
+from ..api import schemas
 
 __all__ = "Block",
 
@@ -56,22 +57,13 @@ class Block(Base):
         addresses_hx = set()
 
         for tx in txes:
-            for vio in (tx.get("inputs", []) + tx.get("outputs", [])):
-                if "addressHex" in vio:
-                    addresses_hx.add(vio.addressHex)
-                elif "address" in vio:
-                    addresses_hy.add(vio.address)
-
-                if "receipt" in vio:
-                    a = vio.receipt.get("sender", ...)
-                    if a is not ...: addresses_hy.add(a)
-                    a = vio.receipt.get("contractAddressHex", ...)
-                    if a is not ...: addresses_hx.add(a)
-
-                    addresses_hx.update(filter(
-                        lambda adr: adr is not ...,
-                        (logi.get("addressHex", ...) for logi in vio.receipt.get("logs", []))
-                    ))
+            for address in schemas.Block.tx_yield_addrs(tx):
+                if len(address) == 34:
+                    addresses_hy.add(address)
+                elif len(address) == 40:
+                    addresses_hx.add(address)
+                else:
+                    log.warning(f"Unknown address length {len(address)}: '{address}'")
 
         if not len(addresses_hy) and not len(addresses_hx):
             return False
@@ -104,20 +96,7 @@ class Block(Base):
         return added_history
 
     def filter_tx(self, address: str):
-        return filter(
-            lambda tx: len(tuple(filter(
-                lambda txi:
-                    ("addressHex" in txi and txi["addressHex"] == address) or
-                    ("address" in txi and txi["address"] == address) or
-                    ("receipt" in txi and (
-                        (txi["receipt"].get("sender", ...) == address) or
-                        (txi["receipt"].get("contractAddressHex", ...) == address) or
-                        (address in tuple(logi.get("addressHex") for logi in txi["receipt"].get("logs", [])))
-                    )),
-                tx.get("inputs", []) + tx.get("outputs", [])
-            ))) > 0,
-            self.tx
-        )
+        return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:

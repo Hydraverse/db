@@ -34,20 +34,60 @@ class Block(BaseModel):
         orm_mode = True
 
     def filter_tx(self, address: str):
-        return filter(
-            lambda tx: len(tuple(filter(
-                lambda txi:
-                ("addressHex" in txi and txi["addressHex"] == address) or
-                ("address" in txi and txi["address"] == address) or
-                ("receipt" in txi and (
-                        (txi["receipt"].get("sender", ...) == address) or
-                        (txi["receipt"].get("contractAddressHex", ...) == address) or
-                        (address in tuple(logi.get("addressHex") for logi in txi["receipt"].get("logs", [])))
-                )),
-                tx.get("inputs", []) + tx.get("outputs", [])
-            ))) > 0,
-            self.tx
-        )
+        return filter(lambda tx: address in list(Block.tx_yield_addrs(tx)), self.tx)
+
+    @staticmethod
+    def tx_yield_addrs(tx: dict):
+        # Address locations:
+        # .[inputs|outputs].address[Hex]
+        #                  .receipt.[sender|contractAddressHex]
+        #                          .logs.addressHex
+        # .contractSpends.[inputs|outputs].addressHex
+        # .qrc[20|721]TokenTransfers.[to|from|addressHex]
+
+        for vio in (tx.get("inputs", []) + tx.get("outputs", [])):
+            if "addressHex" in vio:
+                yield vio["addressHex"]
+            elif "address" in vio:
+                yield vio["address"]
+
+            receipt = vio.get("receipt", None)
+
+            if receipt is not None:
+
+                a = receipt.get("sender", None)
+
+                if a is not None:
+                    yield a
+
+                a = receipt.get("contractAddressHex", None)
+
+                if a is not None:
+                    yield a
+
+                for logi in receipt.get("logs", []):
+                    if "addressHex" in logi:
+                        yield logi["addressHex"]
+
+        contract_spends = tx.get("contractSpends", {})
+
+        for contract_spend in (contract_spends.get("inputs", []) + contract_spends.get("outputs", [])):
+            a = contract_spend.get("addressHex", contract_spend.get("address", ...))
+            if a is not ...:
+                yield a
+
+        token_transfers = tx.get("qrc20TokenTransfers", []) + tx.get("qrc721TokenTransfers", [])
+
+        for token_transfer in token_transfers:
+            a = token_transfer.get("from", None)
+            if a is not None:
+                yield a
+            a = token_transfer.get("to", None)
+            if a is not None:
+                yield a
+            a = token_transfer.get("addressHex", None)
+            if a is not None:
+                yield a
 
 
 class AddrHist(BaseModel):
