@@ -13,7 +13,10 @@ class HyDbClient(BaseRPC):
 
     def __init__(self):
         conf = Config.get(HyDbClient, defaults=True, save_defaults=True)
-        super().__init__(url=conf.url)
+        super().__init__(
+            url=conf.url,
+            response_factory=BaseRPC.RESPONSE_FACTORY_JSON
+        )
 
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
@@ -28,21 +31,21 @@ class HyDbClient(BaseRPC):
         return schemas.User(
             **self.post(
                 f"/u/",
-                **schemas.UserCreate(tg_user_id=tg_user_id).dict()
+                **schemas.UserCreate(tg_user_id=tg_user_id).dict(),
             )
         )
 
     def user_del(self, user_pk: int, tg_user_id: int) -> None:
         self.post(
             f"/u/{user_pk}",
-            **schemas.UserDelete(tg_user_id=tg_user_id).dict()
+            request_type="delete",
+            **schemas.UserDelete(tg_user_id=tg_user_id).dict(),
         )
 
     def user_addr_get(self, user: schemas.User, address: str) -> Optional[schemas.UserAddr]:
         result = self.get(
             f"/u/{user.uniq.pkid}/a/{address}",
-            raw=True
-        ).json()
+        )
 
         return result if result is None else schemas.UserAddr(
             **result
@@ -52,7 +55,7 @@ class HyDbClient(BaseRPC):
         return schemas.UserAddr(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/",
-                **schemas.UserAddrAdd(address=address).dict()
+                **schemas.UserAddrAdd(address=address).dict(),
             )
         )
 
@@ -60,6 +63,7 @@ class HyDbClient(BaseRPC):
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/{user_addr.pkid}",
+                request_type="delete",
             )
         )
 
@@ -67,5 +71,6 @@ class HyDbClient(BaseRPC):
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.addr_hist.pkid}",
+                request_type="delete",
             )
         )

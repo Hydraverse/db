@@ -37,7 +37,7 @@ def user_add(user_create: schemas.UserCreate, db: DB = Depends(dbase.yield_with_
     return crud.user_add(db=db, user_create=user_create)
 
 
-@app.post("/u/{user_pk}")
+@app.delete("/u/{user_pk}")
 def user_del(user_pk: int, user_delete: schemas.UserDelete, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
@@ -90,7 +90,7 @@ def user_addr_add(user_pk: int, addr_add: schemas.UserAddrAdd, db: DB = Depends(
     return crud.user_addr_add(db=db, user=db_user, addr_add=addr_add)
 
 
-@app.post("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.DeleteResult)
+@app.delete("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.DeleteResult)
 def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
@@ -100,7 +100,7 @@ def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_
     return crud.user_addr_del(db=db, user=db_user, user_addr_pk=user_addr_pk)
 
 
-@app.post("/u/{user_pk}/a/{user_addr_pk}/{addr_hist_pk}", response_model=schemas.DeleteResult)
+@app.delete("/u/{user_pk}/a/{user_addr_pk}/{addr_hist_pk}", response_model=schemas.DeleteResult)
 def user_addr_hist_del(user_pk: int, user_addr_pk: int, addr_hist_pk: int, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
