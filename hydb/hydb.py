@@ -41,7 +41,7 @@ class HyDb(HydraApp):
 
         return Block.update_task(self.db)
 
-    # noinspection PyUnresolvedReferences,PyMethodMayBeStatic
+    # noinspection PyUnresolvedReferences
     def shell(self):
         import sys, traceback, code
         from hydra.rpc.base import BaseRPC
@@ -52,7 +52,7 @@ class HyDb(HydraApp):
         db = self.db
         client = HyDbClient()
         code.interact(
-            banner=f"Hydra DB Shell:\n  db   = {db}\n  rpc  = {rpc}\n  xrpc = {xrpc}\n",
+            banner=f"Hydra DB Shell:\n  db     = {db}\n  rpc    = {rpc}\n  xrpc   = {xrpc}\n  client = {client}",
             exitmsg="",
             local=locals(),
         )

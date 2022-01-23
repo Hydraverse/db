@@ -39,6 +39,10 @@ def user_del(db: DB, user_pk: int):
     u.delete(db)
 
 
+def user_info_update(db: DB, user: models.User, update: schemas.UserInfoUpdate) -> schemas.UserInfoUpdate.Result:
+    return user.update_info(db, update)
+
+
 def user_addr_get(db: DB, user: models.User, address: str) -> Optional[models.UserAddr]:
     return user.addr_get(
         db=db,

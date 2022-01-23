@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import Optional
 
+from attrdict import AttrDict
 from hydra import log
 from sqlalchemy import Column, Integer
 from sqlalchemy.exc import IntegrityError
@@ -10,6 +11,7 @@ from .base import *
 from .db import DB
 from .user_uniq import UserUniq, DbUserUniqPkidColumn, DbUserUniqRelationship
 from .user_addr import UserAddr, UserAddrHist
+from ..api import schemas
 
 __all__ = "User", "UserUniq", "UserAddr", "UserAddrHist"
 
@@ -105,6 +107,27 @@ class User(Base):
 
         db.Session.delete(self)
         db.Session.commit()
+
+    def update_info(self, db: DB, update: schemas.UserInfoUpdate) -> schemas.UserInfoUpdate.Result:
+        changed = False
+
+        if update.over:
+            if self.info != update.info:
+                self.info = update.info
+                changed = True
+        else:
+            info = AttrDict(self.info)
+            info.update(update.info)
+
+            if self.info != info:
+                self.info = info
+                changed = True
+
+        if changed:
+            db.Session.add(self)
+            db.Session.commit()
+            db.Session.refresh(self)
+            return schemas.UserInfoUpdate.Result(info=self.info)
 
     def addr_get(self, db: DB, address: str, create: bool = True) -> Optional[UserAddr]:
         return UserAddr.get(db=db, user=self, address=address, create=create)

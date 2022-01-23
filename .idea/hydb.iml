@@ -4,6 +4,7 @@
     <content url="file://$MODULE_DIR$">
       <excludeFolder url="file://$MODULE_DIR$/.env/hydra-db" />
       <excludeFolder url="file://$MODULE_DIR$/.env" />
+      <excludeFolder url="file://$MODULE_DIR$/hydb.egg-info" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.9 (db)" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

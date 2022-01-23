@@ -70,6 +70,20 @@ def user_get_tg(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
     return db_user
 
 
+@app.put("/u/{user_pk}/info", response_model=schemas.UserInfoUpdate.Result)
+def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB = Depends(dbase.yield_with_session)):
+    db_user = crud.user_get_by_pkid(db, user_pk)
+
+    if db_user is None:
+        raise HTTPException(status_code=404, detail="User not found.")
+
+    return crud.user_info_update(
+        db=db,
+        user=db_user,
+        update=user_info_update,
+    )
+
+
 @app.get("/u/{user_pk}/a/{address}", response_model=schemas.UserAddr)
 def user_addr_get(user_pk: int, address: str, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)

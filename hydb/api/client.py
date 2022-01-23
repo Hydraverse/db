@@ -35,11 +35,20 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_del(self, user_pk: int, tg_user_id: int) -> None:
+    def user_del(self, user: schemas.User) -> None:
         self.post(
-            f"/u/{user_pk}",
+            f"/u/{user.uniq.pkid}",
             request_type="delete",
-            **schemas.UserDelete(tg_user_id=tg_user_id).dict(),
+            **schemas.UserDelete(tg_user_id=user.tg_user_id).dict(),
+        )
+
+    def user_info_put(self, user: schemas.User, info: AttrDict, over: bool = False) -> schemas.UserInfoUpdate.Result:
+        return schemas.UserInfoUpdate.Result(
+            **self.post(
+                f"/u/{user.uniq.pkid}/info",
+                request_type="put",
+                **schemas.UserInfoUpdate(info=info, over=over).dict(),
+            )
         )
 
     def user_addr_get(self, user: schemas.User, address: str) -> Optional[schemas.UserAddr]:

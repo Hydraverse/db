@@ -120,6 +120,9 @@ class Addr(BaseModel):
     block_h: int
     info: AttrDict
 
+    def __str__(self):
+        return self.addr_hy if self.addr_tp == Addr.Type.H else self.addr_hx
+
     class Config:
         orm_mode = True
 
@@ -190,4 +193,13 @@ class User(UserBase):
 
 class DeleteResult(BaseModel):
     deleted: bool
+
+
+class UserInfoUpdate(BaseModel):
+    info: AttrDict
+    over: bool
+
+    class Result(BaseModel):
+        info: AttrDict
+
 
