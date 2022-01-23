@@ -76,10 +76,11 @@ class Block(BaseModel):
 
         contract_spends = tx.get("contractSpends", {})
 
-        for contract_spend in (contract_spends.get("inputs", []) + contract_spends.get("outputs", [])):
-            a = contract_spend.get("addressHex", contract_spend.get("address", ...))
-            if a is not ...:
-                yield a
+        for contract_spend in contract_spends:
+            for cs_io in contract_spend.get("inputs", []) + contract_spend.get("outputs", []):
+                a = cs_io.get("addressHex", cs_io.get("address", ...))
+                if a is not ...:
+                    yield a
 
         token_transfers = tx.get("qrc20TokenTransfers", []) + tx.get("qrc721TokenTransfers", [])
 
