@@ -138,7 +138,7 @@ class UserCreate(BaseModel):
 
 
 class UserDelete(BaseModel):
-    pkid: int
+    tg_user_id: int
 
 
 class UserBase(BaseModel):
@@ -155,7 +155,6 @@ class UserBase(BaseModel):
 class UserAddrHist(BaseModel):
     user_addr_pk: int
     date_create: datetime
-    garbage: bool
     block_c: int
     addr_hist: AddrHist
     data: Optional[AttrDict]
@@ -181,13 +180,13 @@ class UserAddrAdd(BaseModel):
     address: str
 
 
-class UserAddrDel(BaseModel):
-    addr_pk: int
-
-
 class User(UserBase):
     user_addrs: List[UserAddr]
 
     class Config:
         orm_mode = True
+
+
+class DeleteResult(BaseModel):
+    deleted: bool
 

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from typing import List
+
 from sqlalchemy import Column, ForeignKey, Integer, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 
@@ -15,7 +17,6 @@ class UserAddrHist(Base):
     user_addr_pk = Column(Integer, ForeignKey("user_addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     addr_hist_pk = Column(Integer, ForeignKey("addr_hist.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()
-    garbage = Column(Boolean, nullable=False, default=False)
     block_c = Column(Integer, nullable=False)
     data = DbDataColumn()
 
@@ -32,8 +33,8 @@ class UserAddrHist(Base):
         back_populates="addr_hist_user",
     )
 
-    def _remove(self, db: DB):
+    def _remove(self, db: DB, user_addr_hist: List[UserAddrHist]):
         addr_hist = self.addr_hist
-        self.user_addr.user_addr_hist.remove(self)
+        user_addr_hist.remove(self)
         addr_hist._removed_user(db)
 

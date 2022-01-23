@@ -2,7 +2,7 @@ from __future__ import annotations
 from typing import Optional
 
 from hydra import log
-from sqlalchemy import Column, Integer, and_
+from sqlalchemy import Column, Integer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship
 
@@ -109,14 +109,14 @@ class User(Base):
     def addr_get(self, db: DB, address: str, create: bool = True) -> Optional[UserAddr]:
         return UserAddr.get(db=db, user=self, address=address, create=create)
 
-    def addr_del(self, db: DB, addr_pk: int) -> bool:
+    def addr_get_pk(self, db: DB, addr_pk: int, create: bool = True) -> Optional[UserAddr]:
+        return UserAddr.get_by_addr_pk(db=db, user=self, addr_pk=addr_pk, create=create)
+
+    def addr_del(self, db: DB, user_addr_pk: int) -> bool:
         ua: Optional[UserAddr] = db.Session.query(
             UserAddr
         ).where(
-            and_(
-                UserAddr.user_pk == self.pkid,
-                UserAddr.addr_pk == addr_pk
-            )
+            UserAddr.pkid == user_addr_pk
         ).one_or_none()
 
         if ua is not None:

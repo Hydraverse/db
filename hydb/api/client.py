@@ -1,3 +1,5 @@
+from typing import Optional
+
 from hydra.rpc.base import BaseRPC
 from ..util.conf import Config, AttrDict
 from . import schemas
@@ -16,33 +18,54 @@ class HyDbClient(BaseRPC):
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
 
-    def user_get(self, tg_user_id: int) -> schemas.User:
-        return schemas.User(**self.get(f"/user/{tg_user_id}"))
+    def user_get(self, user_pk: int) -> schemas.User:
+        return schemas.User(**self.get(f"/u/{user_pk}"))
+
+    def user_get_tg(self, tg_user_id: int) -> schemas.User:
+        return schemas.User(**self.get(f"/u/tg/{tg_user_id}"))
 
     def user_add(self, tg_user_id: int) -> schemas.User:
         return schemas.User(
             **self.post(
-                f"/user/",
+                f"/u/",
                 **schemas.UserCreate(tg_user_id=tg_user_id).dict()
             )
         )
 
     def user_del(self, user_pk: int, tg_user_id: int) -> None:
         self.post(
-            f"/user/{tg_user_id}",
-            **schemas.UserDelete(pkid=user_pk).dict()
+            f"/u/{user_pk}",
+            **schemas.UserDelete(tg_user_id=tg_user_id).dict()
+        )
+
+    def user_addr_get(self, user: schemas.User, address: str) -> Optional[schemas.UserAddr]:
+        result = self.get(
+            f"/u/{user.uniq.pkid}/a/{address}",
+            raw=True
+        ).json()
+
+        return result if result is None else schemas.UserAddr(
+            **result
         )
 
     def user_addr_add(self, user: schemas.User, address: str) -> schemas.UserAddr:
         return schemas.UserAddr(
             **self.post(
-                f"/user/{user.tg_user_id}/addr/add",
+                f"/u/{user.uniq.pkid}/a/",
                 **schemas.UserAddrAdd(address=address).dict()
             )
         )
 
-    def user_addr_del(self, user: schemas.User, addr_pk: int) -> bool:
-        return self.post(
-                f"/user/{user.tg_user_id}/addr/del",
-                **schemas.UserAddrDel(addr_pk=addr_pk).dict()
+    def user_addr_del(self, user: schemas.User, user_addr: schemas.UserAddr) -> schemas.DeleteResult:
+        return schemas.DeleteResult(
+            **self.post(
+                f"/u/{user.uniq.pkid}/a/{user_addr.pkid}",
             )
+        )
+
+    def user_addr_hist_del(self, user: schemas.User, user_addr_hist: schemas.UserAddrHist) -> schemas.DeleteResult:
+        return schemas.DeleteResult(
+            **self.post(
+                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.addr_hist.pkid}",
+            )
+        )

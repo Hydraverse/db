@@ -13,7 +13,7 @@ __all__ = "AddrHist",
 class AddrHist(Base):
     __tablename__ = "addr_hist"
 
-    pkid = DbPkidColumn()
+    pkid = DbPkidColumn(seq="addr_hist_seq")
     block_pk = Column(Integer, ForeignKey("block.pkid", ondelete="CASCADE"), nullable=False, primary_key=True)
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), nullable=False, primary_key=True)
     info = DbInfoColumn()

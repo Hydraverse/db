@@ -54,7 +54,7 @@ class Addr(Base):
         tokenByIndex = Call.method_id_from_sig("tokenByIndex(uint256)")
         isMinter = Call.method_id_from_sig("isMinter(address)")
 
-    pkid = DbPkidColumn()
+    pkid = DbPkidColumn(seq="addr_seq")
     addr_hx = Column(String(40), nullable=False, unique=True, primary_key=True)
     addr_hy = Column(String(34), nullable=False, unique=True, primary_key=True)
     addr_tp = Column(Enum(Type, validate_strings=True), nullable=False)

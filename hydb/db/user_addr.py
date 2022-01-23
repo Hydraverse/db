@@ -18,7 +18,7 @@ __all__ = "UserAddr", "UserAddrHist"
 class UserAddr(Base):
     __tablename__ = "user_addr"
 
-    pkid = DbPkidColumn()
+    pkid = DbPkidColumn(seq="user_addr_seq")
     user_pk = Column(Integer, ForeignKey("user.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()
@@ -30,7 +30,7 @@ class UserAddr(Base):
     addr = relationship("Addr", back_populates="addr_users")
 
     user_addr_hist = relationship(
-        "UserAddrHist",
+        UserAddrHist,
         back_populates="user_addr",
         cascade="all, delete-orphan",
         single_parent=True,
@@ -49,24 +49,37 @@ class UserAddr(Base):
             self.block_c += 1
             db.Session.add(self)
 
+    # noinspection DuplicatedCode
+    def addr_hist_del(self, db: DB, addr_hist_pk: int) -> bool:
+        uah: Optional[UserAddrHist] = db.Session.query(
+            UserAddrHist
+        ).where(
+            and_(
+                UserAddrHist.user_addr_pk == self.pkid,
+                UserAddrHist.addr_hist_pk == addr_hist_pk
+            )
+        ).one_or_none()
+
+        if uah is not None:
+            uah._remove(db, self.user_addr_hist)
+            db.Session.commit()
+            return True
+
+        return False
+
     def _remove(self, db: DB, user_addrs):
         addr = self.addr
         user_addrs.remove(self)
         addr._removed_user(db)
 
     @staticmethod
-    def get(db: DB, user, address: str, create=True) -> Optional[UserAddr]:
-        addr: Addr = Addr.get(db, address, create=create)
-
-        if addr is None:
-            return None
-
+    def get_by_addr(db: DB, user, addr: Addr, create=True) -> Optional[UserAddr]:
         try:
             q = db.Session.query(UserAddr).where(
                 and_(
                     UserAddr.user_pk == user.pkid,
                     UserAddr.addr_pk == addr.pkid,
-                )
+                    )
             )
 
             if not create:
@@ -81,3 +94,26 @@ class UserAddr(Base):
             db.Session.commit()
             db.Session.refresh(ua)
             return ua
+
+    @staticmethod
+    def get_by_addr_pk(db: DB, user, addr_pk: int, create=True) -> Optional[UserAddr]:
+        addr: Addr = db.Session.query(
+            Addr
+        ).where(
+            Addr.pkid == addr_pk
+        ).one_or_none()
+
+        if addr is None:
+            return None
+
+        return UserAddr.get_by_addr(db, user, addr, create=create)
+
+    @staticmethod
+    def get(db: DB, user, address: str, create=True) -> Optional[UserAddr]:
+        addr: Addr = Addr.get(db, address, create=create)
+
+        if addr is None:
+            return None
+
+        return UserAddr.get_by_addr(db, user, addr, create=create)
+
