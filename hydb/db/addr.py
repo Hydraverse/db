@@ -89,13 +89,13 @@ class Addr(Base):
                 info = db.rpcx.get_address(self.addr_hy)
             else:
                 info = db.rpcx.get_contract(self.addr_hx)
-                del info.addressHex
+                del info["addressHex"]
 
                 # TODO: Determine why this is different on explorer and how to acquire!
                 #   e.g. 09188dbfe8e915e6a3c42842b079432007a3673f
                 #        -> e2vb5jpC2hodZuqRefGd7XVWPZQEbqd8uk (explorer api)
                 #        -> Ta8uUv4ha1krJeDB1kcLWGR42ShiA3Fpxy (fromhexaddress)
-                # del info.address
+                # del info["address"]
 
         except BaseRPC.Exception as exc:
             log.critical(f"Addr RPC error: {str(exc)}", exc_info=exc)
@@ -103,9 +103,8 @@ class Addr(Base):
 
         self.block_h = height
 
-        if "qrc721Balances" in info:
-            for qrc721entry in info.qrc721Balances:
-                qrc721entry.uris = self.nft_uris_from(db, qrc721entry.addressHex, qrc721entry.count)
+        for qrc721entry in info.get("qrc721Balances", []):
+            qrc721entry.uris = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
         addr_hist: Optional[AddrHist] = None
 

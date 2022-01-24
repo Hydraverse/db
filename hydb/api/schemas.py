@@ -121,7 +121,7 @@ class Addr(BaseModel):
     info: AttrDict
 
     def __str__(self):
-        return self.addr_hy if self.addr_tp == Addr.Type.H else self.addr_hx
+        return self.addr_hy if self.addr_tp.value == Addr.Type.H else self.addr_hx
 
     class Config:
         orm_mode = True

@@ -1,3 +1,3 @@
 """A database for tracking blockchain data from the Hydra Chain.
 """
-VERSION = "1.0.3"
+VERSION = "1.0.4"
