@@ -6,6 +6,7 @@ from asyncio import CancelledError
 from typing import Optional, List
 
 from hydra import log
+from hydra.rpc import BaseRPC
 from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
@@ -129,6 +130,14 @@ class Block(Base):
             db.Session.commit()
             db.Session.refresh(new_block)
             log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
+
+            try:
+                db.api.db_notify_block(block_pk=new_block.pkid)
+            except BaseRPC.Exception as exc:
+                log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
+            else:
+                log.info(f"Sent notification for new block #{new_block.pkid}")
+
             return new_block
 
         log.debug(f"Discarding block without history entries at height {new_block.height}")

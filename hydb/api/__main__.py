@@ -1,12 +1,12 @@
-from typing import List
-
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, APIRouter, Request
+from sse_starlette.sse import EventSourceResponse
 from sqlalchemy import and_
 
 from ..db import DB
 
 from .crud import models, schemas
 from . import crud
+from . import event
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
@@ -25,6 +25,17 @@ def say_hello(name: str):
 @app.get("/server/info", response_model=schemas.ServerInfo)
 def server_info():
     return crud.server_info(db=dbase)
+
+
+@app.get("/db/notify/block/{block_pk}")
+def db_notify_block(block_pk: int):
+    event.block_event_notify(block_pk)
+
+
+@app.router.get('/sse/block')
+async def sse_block(request: Request):
+    event_generator = event.block_event_generator(request)
+    return EventSourceResponse(event_generator)
 
 
 @app.post("/u/", response_model=schemas.User)

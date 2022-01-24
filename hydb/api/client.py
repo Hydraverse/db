@@ -1,25 +1,72 @@
-from typing import Optional
+import asyncio
+from typing import Optional, Any, Callable, Coroutine
+from sseclient import SSEClient
+import json
 
 from hydra.rpc.base import BaseRPC
 from ..util.conf import Config, AttrDict
+from ..util.asyncc import AsyncMethods
 from . import schemas
 
 
 @Config.defaults
 class HyDbClient(BaseRPC):
+    asyncc: AsyncMethods
+
     CONF = AttrDict(
         url="http://127.0.0.1:8000"
     )
 
     def __init__(self):
+        self.asyncc = AsyncMethods(self)
         conf = Config.get(HyDbClient, defaults=True, save_defaults=True)
         super().__init__(
             url=conf.url,
             response_factory=BaseRPC.RESPONSE_FACTORY_JSON
         )
 
+    def _sse_get(self, path: str, callback_fn: Callable[[str, str], None]):
+        rsp = self.request(
+            request_type="get",
+            path=path,
+            response_factory=lambda rsp_: rsp_,
+            stream=True,
+            headers={
+                "Accept": "text/event-stream",
+            },
+        )
+
+        sse_client = SSEClient(rsp)
+
+        for event in sse_client.events():
+            callback_fn(event.event, event.data)
+
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
+
+    def db_notify_block(self, block_pk: int) -> None:
+        self.get(f"/db/notify/block/{block_pk}", response_factory=lambda rsp: None)
+
+    def sse_block(self, callback_fn: Callable[[int], None]):
+        def callback(event: str, data: str):
+            if event == "block":
+                data: int = json.loads(data)
+                return callback_fn(data)
+
+        return self._sse_get(
+            path="/sse/block",
+            callback_fn=callback
+        )
+
+    async def sse_block_async(self, callback_fn: Callable):
+        def callback(event: str, data: object):
+            if event == "block" and isinstance(data, int):
+                asyncio.run_coroutine_threadsafe(callback_fn(data), asyncio.get_event_loop())
+
+        return await self.asyncc._sse_get(
+            path="/sse/block",
+            callback_fn=callback
+        )
 
     def user_get(self, user_pk: int) -> schemas.User:
         return schemas.User(**self.get(f"/u/{user_pk}"))

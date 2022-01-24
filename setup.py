@@ -28,6 +28,7 @@ setup(
         "halo-hypy",
         "pyyaml",
         "pydantic",
+        "sseclient-py",
     ],
     extras_require={
         "client": [],
@@ -38,6 +39,7 @@ setup(
             "psycopg2-binary",
             "alembic[tz]",
             "fastapi",
+            "sse-starlette",
             "uvicorn[standard]",
             "cryptography",
         ]

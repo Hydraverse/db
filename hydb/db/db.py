@@ -15,6 +15,7 @@ from hydra.rpc import HydraRPC, ExplorerRPC
 from hydra import log
 
 from hydb.util.conf import Config
+from hydb.api.client import HyDbClient
 
 
 @Config.defaults
@@ -22,6 +23,7 @@ class DB:
     engine = None
     Session: scoped_session
     rpc: HydraRPC
+    api: HyDbClient
     url: str
     wallet: str
     passphrase: str
@@ -96,6 +98,7 @@ class DB:
 
         self.rpc = HydraRPC(url=conf_rpc.url)
         self.rpcx = ExplorerRPC(mainnet=self.rpc.mainnet)
+        self.api = HyDbClient()
         self.__init_wallet()
 
     def __repr__(self):
