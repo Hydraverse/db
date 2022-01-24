@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, List, Dict
 
 from sqlalchemy import Column, ForeignKey, Integer, and_, UniqueConstraint
 from sqlalchemy.exc import NoResultFound
@@ -24,7 +24,7 @@ class UserAddr(Base):
     date_create = DbDateCreateColumn()
     date_update = DbDateUpdateColumn()
     block_c = Column(Integer, nullable=False, default=0)
-    token_l = DbDataColumn(default=[])
+    token_l = DbDataColumn(default={})
 
     user = relationship("User", back_populates="user_addrs")
     addr = relationship("Addr", back_populates="addr_users")
@@ -35,6 +35,35 @@ class UserAddr(Base):
         cascade="all, delete-orphan",
         single_parent=True,
     )
+
+    def token_addr_add(self, db: DB, address: str) -> Dict[str, dict]:
+        addr_tp, addr_hx, addr_hy, sc_info = Addr.normalize(db, address)
+
+        if addr_tp not in (Addr.Type.T, Addr.Type.N):
+            return self.token_l
+
+        if addr_hx in self.token_l:
+            return self.token_l
+
+        self.token_l[addr_hx] = sc_info
+        db.Session.add(self)
+        db.Session.commit()
+        db.Session.refresh(self)
+        return self.token_l
+
+    def token_addr_del(self, db: DB, address: str) -> bool:
+        addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)
+
+        if addr_tp not in (Addr.Type.T, Addr.Type.N):
+            return False
+
+        if addr_hx not in self.token_l:
+            return False
+
+        del self.token_l[addr_hx]
+        db.Session.add(self)
+        db.Session.commit()
+        return True
 
     def on_new_addr_hist(self, db: DB, addr_hist: AddrHist):
         user_addr_hist = UserAddrHist(

@@ -1,6 +1,6 @@
 from datetime import datetime
 import enum
-from typing import Optional, List, Generic, TypeVar
+from typing import Optional, List, Generic, TypeVar, Dict
 
 from attrdict import AttrDict
 from pydantic import BaseModel, root_validator
@@ -169,9 +169,12 @@ class UserAddrHist(BaseModel):
 
 class UserAddr(BaseModel):
     pkid: int
+    user_pk: int
+    addr_pk: int
     date_create: datetime
     date_update: Optional[datetime]
     block_c: int
+    token_l: Dict[str, dict]
     addr: Addr
 
     user_addr_hist: Optional[List[UserAddrHist]]
@@ -179,9 +182,23 @@ class UserAddr(BaseModel):
     class Config:
         orm_mode = True
 
+    def filter_addr_token_balances(self):
+        return filter(
+            lambda bal: bal["addressHex"] in self.token_l,
+            self.addr.info.get("qrc20Balances", [])
+            + self.addr.info.get("qrc721Balances", [])
+        )
+
 
 class UserAddrAdd(BaseModel):
     address: str
+
+
+class UserAddrTokenAdd(BaseModel):
+    address: str
+
+    class Result(BaseModel):
+        token_l: Dict[str, dict]
 
 
 class User(UserBase):

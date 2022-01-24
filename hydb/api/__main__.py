@@ -114,13 +114,42 @@ def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_
     return crud.user_addr_del(db=db, user=db_user, user_addr_pk=user_addr_pk)
 
 
+@app.post("/u/{user_pk}/a/{user_addr_pk}/t", response_model=schemas.UserAddrTokenAdd.Result)
+def user_addr_token_add(user_pk: int, user_addr_pk: int, addr_token_add: schemas.UserAddrTokenAdd, db: DB = Depends(dbase.yield_with_session)):
+    user_addr: models.UserAddr = db.Session.query(
+        models.UserAddr
+    ).where(
+        and_(
+            models.UserAddr.user_pk == user_pk,
+            models.UserAddr.pkid == user_addr_pk,
+        )
+    ).one_or_none()
+
+    if user_addr is None:
+        raise HTTPException(status_code=404, detail="UserAddr not found.")
+
+    return crud.user_addr_token_add(db=db, user_addr=user_addr, addr_token_add=addr_token_add)
+
+
+@app.delete("/u/{user_pk}/a/{user_addr_pk}/t/{address}", response_model=schemas.DeleteResult)
+def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = Depends(dbase.yield_with_session)):
+    user_addr: models.UserAddr = db.Session.query(
+        models.UserAddr
+    ).where(
+        and_(
+            models.UserAddr.user_pk == user_pk,
+            models.UserAddr.pkid == user_addr_pk,
+        )
+    ).one_or_none()
+
+    if user_addr is None:
+        raise HTTPException(status_code=404, detail="UserAddr not found.")
+
+    return crud.user_addr_token_del(db=db, user_addr=user_addr, address=address)
+
+
 @app.delete("/u/{user_pk}/a/{user_addr_pk}/{addr_hist_pk}", response_model=schemas.DeleteResult)
 def user_addr_hist_del(user_pk: int, user_addr_pk: int, addr_hist_pk: int, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.user_get_by_pkid(db, user_pk)
-
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
     user_addr: models.UserAddr = db.Session.query(
         models.UserAddr
     ).where(

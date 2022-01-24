@@ -4,6 +4,7 @@ from functools import lru_cache
 from typing import Optional, Tuple
 import binascii
 
+from attrdict import AttrDict
 from hydra import log
 from hydra.app.call import Call
 from hydra.rpc.hydra_rpc import BaseRPC
@@ -78,6 +79,9 @@ class Addr(Base):
     def __str__(self):
         return self.addr_hy if self.addr_tp == Addr.Type.H else self.addr_hx
 
+    def __hash__(self):
+        return hash(str(self))
+
     def update_info(self, db: DB, block: Optional[Block]) -> bool:
         height = block.height if block is not None else db.rpc.getblockcount()
 
@@ -129,6 +133,7 @@ class Addr(Base):
 
         return False
 
+    @lru_cache(maxsize=None)
     def nft_uris_from(self, db: DB, nft_addr_hx: str, count: int) -> dict:
         uris = {}
 
@@ -156,9 +161,7 @@ class Addr(Base):
                     log.warning(f"Contract call tokenURI failed: {r.executionResult.excepted}")
                     log.debug(f"Contract call failed (full result): {r}")
                 else:
-                    token_uri = binascii.unhexlify(
-                        r.executionResult.output
-                    ).replace(b"\x00", b"").decode("utf-8")
+                    token_uri = Addr.__sc_out_str(r.executionResult.output)
 
                     uris[token_id] = token_uri
 
@@ -189,7 +192,7 @@ class Addr(Base):
 
     @staticmethod
     def get(db: DB, address: str, create=True) -> Addr:
-        addr_tp, addr_hx, addr_hy = Addr.normalize(db, address)
+        addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)
 
         try:
             q = db.Session.query(Addr).where(
@@ -215,11 +218,25 @@ class Addr(Base):
 
     @staticmethod
     @lru_cache(maxsize=None)
-    def normalize(db: DB, address: str) -> Tuple[Addr.Type, str, str]:
+    def gethexaddress(db: DB, address: str):
+        addr_hx = db.rpc.gethexaddress(address)
+        return addr_hx
+
+    @staticmethod
+    @lru_cache(maxsize=None)
+    def fromhexaddress(db: DB, address: str):
+        addr_hy = db.rpc.fromhexaddress(address)
+        return addr_hy
+
+    # noinspection PyUnusedLocal
+    @staticmethod
+    @lru_cache(maxsize=None)  # passing block_height can force a non-cached response with updated info.
+    def normalize(db: DB, address: str, block_height: Optional[int] = None) -> Tuple[Addr.Type, str, str, AttrDict]:
         """Normalize an input address into a tuple of (Addr.Type, addr_hex, addr_hydra).
         Or raise ValueError.
         """
         addr_tp = Addr.Type.by_len(address)
+        sci = AttrDict()
 
         if addr_tp is None:
             raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (bad length)")
@@ -233,7 +250,7 @@ class Addr(Base):
                     raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (validation failed)")
 
                 addr_hy = valid.address
-                addr_hx = db.rpc.gethexaddress(address)
+                addr_hx = Addr.gethexaddress(db, addr_hy)
 
             elif addr_tp == Addr.Type.S:
 
@@ -242,9 +259,9 @@ class Addr(Base):
                 except ValueError:
                     raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (conversion failed)")
 
-                addr_hy = db.rpc.fromhexaddress(addr_hx)
+                addr_hy = Addr.fromhexaddress(db, addr_hx)
 
-                addr_tp = Addr.__validate_contract(db, addr_hx)
+                addr_tp, sci = Addr.validate_contract(db, addr_hx)
 
             else:
                 raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (bad type)")
@@ -253,45 +270,51 @@ class Addr(Base):
             log.critical(f"Addr normalize RPC error: {str(exc)}", exc_info=exc)
             raise
 
-        return addr_tp, addr_hx, addr_hy
+        return addr_tp, addr_hx, addr_hy, sci
 
     @staticmethod
-    def __validate_contract(db: DB, addr_hx: str) -> Addr.Type:
+    # @lru_cache(maxsize=None)  # Not caching here because the total supply can change.
+    def validate_contract(db: DB, addr_hx: str) -> Tuple[Addr.Type, AttrDict]:
 
         addr_tp = Addr.Type.S
+        sci = AttrDict()
 
         try:
             # Raises BaseRPC.Exception if address does not exist
             r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.name)
         except BaseRPC.Exception:
             # Safest assumption is that this is actually a HYDRA hex address
-            return Addr.Type.H
+            return Addr.Type.H, sci
 
         if r.executionResult.excepted != "None":
-            return Addr.Type.H  # Dunno?
+            return Addr.Type.H, sci  # Dunno?
+
+        sci.name = Addr.__sc_out_str(
+            r.executionResult.output[128:]
+        )
 
         r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.symbol)
 
         if r.executionResult.excepted == "None":
-            # sci.symb = Addr.__sc_out_str(
-            #     r.executionResult.output[128:]
-            # )
+            sci.symbol = Addr.__sc_out_str(
+                r.executionResult.output[128:]
+            )
 
             r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.totalSupply)
 
             if r.executionResult.excepted == "None":
-                # sci.supt = int(r.executionResult.output, 16)
+                sci.totalSupply = int(r.executionResult.output, 16)
 
                 r = db.rpc.callcontract(addr_hx, Addr.ContractMethodID.decimals)
 
                 if r.executionResult.excepted == "None":
-                    # sci.deci = int(r.executionResult.output, 16)
+                    sci.decimals = int(r.executionResult.output, 16)
                     addr_tp = Addr.Type.T
                 else:
                     # NFT contracts have no decimals()
                     addr_tp = Addr.Type.N
 
-        return addr_tp
+        return addr_tp, sci
 
     @staticmethod
     def __sc_out_str(val):

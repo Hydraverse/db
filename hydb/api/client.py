@@ -76,6 +76,22 @@ class HyDbClient(BaseRPC):
             )
         )
 
+    def user_addr_token_add(self, user_addr: schemas.UserAddr, address: str) -> schemas.UserAddrTokenAdd.Result:
+        return schemas.UserAddrTokenAdd.Result(
+            **self.post(
+                f"/u/{user_addr.user_pk}/a/{user_addr.pkid}/t",
+                **schemas.UserAddrTokenAdd(address=address).dict(),
+            )
+        )
+
+    def user_addr_token_del(self, user_addr: schemas.UserAddr, address: str) -> schemas.DeleteResult:
+        return schemas.DeleteResult(
+            **self.post(
+                f"/u/{user_addr.user_pk}/a/{user_addr.pkid}/t/{address}",
+                request_type="delete",
+            )
+        )
+
     def user_addr_hist_del(self, user: schemas.User, user_addr_hist: schemas.UserAddrHist) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(

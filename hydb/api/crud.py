@@ -69,6 +69,25 @@ def user_addr_del(db: DB, user: models.User, user_addr_pk: int) -> schemas.Delet
     )
 
 
+def user_addr_token_add(db: DB, user_addr: models.UserAddr, addr_token_add: schemas.UserAddrTokenAdd) -> schemas.UserAddrTokenAdd.Result:
+    return schemas.UserAddrTokenAdd.Result(
+        token_l=user_addr.token_addr_add(
+            db=db,
+            address=addr_token_add.address,
+        )
+    )
+
+
+def user_addr_token_del(db: DB, user_addr: models.UserAddr, address: str) -> schemas.DeleteResult:
+    # noinspection PyArgumentList
+    return schemas.DeleteResult(
+        deleted=user_addr.token_addr_del(
+            db=db,
+            address=address
+        )
+    )
+
+
 def user_addr_hist_del(db: DB, user_addr: models.UserAddr, addr_hist_pk: int) -> schemas.DeleteResult:
     # noinspection PyArgumentList
     return schemas.DeleteResult(
