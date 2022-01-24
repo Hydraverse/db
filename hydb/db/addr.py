@@ -104,7 +104,7 @@ class Addr(Base):
         self.block_h = height
 
         for qrc721entry in info.get("qrc721Balances", []):
-            qrc721entry.uris = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
+            qrc721entry["uris"] = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
         addr_hist: Optional[AddrHist] = None
 
