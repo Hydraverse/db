@@ -157,6 +157,7 @@ class UserBase(BaseModel):
 
 
 class UserAddrHist(BaseModel):
+    pkid: int
     user_addr_pk: int
     date_create: datetime
     block_c: int
@@ -167,7 +168,7 @@ class UserAddrHist(BaseModel):
         orm_mode = True
 
 
-class UserAddr(BaseModel):
+class UserAddrBase(BaseModel):
     pkid: int
     user_pk: int
     addr_pk: int
@@ -176,8 +177,6 @@ class UserAddr(BaseModel):
     block_c: int
     token_l: Dict[str, dict]
     addr: Addr
-
-    user_addr_hist: Optional[List[UserAddrHist]]
 
     class Config:
         orm_mode = True
@@ -188,6 +187,13 @@ class UserAddr(BaseModel):
             self.addr.info.get("qrc20Balances", [])
             + self.addr.info.get("qrc721Balances", [])
         )
+
+
+class UserAddr(UserAddrBase):
+    user_addr_hist: Optional[List[UserAddrHist]]
+
+    class Config:
+        orm_mode = True
 
 
 class UserAddrAdd(BaseModel):
@@ -220,3 +226,15 @@ class UserInfoUpdate(BaseModel):
         info: AttrDict
 
 
+class UserAddrResult(UserAddrBase):
+    user: UserBase
+
+    class Config:
+        orm_mode = True
+
+
+class UserAddrHistResult(UserAddrHist):
+    user_addr: UserAddrResult
+
+    class Config:
+        orm_mode = True

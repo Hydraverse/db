@@ -33,7 +33,7 @@ class AsyncMethods:
         if inspect.iscoroutinefunction(obj_attr):
             return obj_attr
 
-        elif inspect.isfunction(obj_attr):
+        elif inspect.ismethod(obj_attr):
             return AsyncMethods.__executor_callable(obj_attr)
 
         return obj_attr

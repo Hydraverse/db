@@ -14,6 +14,7 @@ __all__ = "UserAddrHist",
 class UserAddrHist(Base):
     __tablename__ = "user_addr_hist"
 
+    pkid = DbPkidColumn()
     user_addr_pk = Column(Integer, ForeignKey("user_addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     addr_hist_pk = Column(Integer, ForeignKey("addr_hist.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()

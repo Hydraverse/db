@@ -159,8 +159,8 @@ def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = 
     return crud.user_addr_token_del(db=db, user_addr=user_addr, address=address)
 
 
-@app.delete("/u/{user_pk}/a/{user_addr_pk}/{addr_hist_pk}", response_model=schemas.DeleteResult)
-def user_addr_hist_del(user_pk: int, user_addr_pk: int, addr_hist_pk: int, db: DB = Depends(dbase.yield_with_session)):
+@app.delete("/u/{user_pk}/a/{user_addr_pk}/{user_addr_hist_pk}", response_model=schemas.DeleteResult)
+def user_addr_hist_del(user_pk: int, user_addr_pk: int, user_addr_hist_pk: int, db: DB = Depends(dbase.yield_with_session)):
     user_addr: models.UserAddr = db.Session.query(
         models.UserAddr
     ).where(
@@ -173,7 +173,7 @@ def user_addr_hist_del(user_pk: int, user_addr_pk: int, addr_hist_pk: int, db: D
     if user_addr is None:
         raise HTTPException(status_code=404, detail="UserAddr not found.")
 
-    return crud.user_addr_hist_del(db=db, user_addr=user_addr, addr_hist_pk=addr_hist_pk)
+    return crud.user_addr_hist_del(db=db, user_addr=user_addr, user_addr_hist_pk=user_addr_hist_pk)
 
 
 

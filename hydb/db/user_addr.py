@@ -78,14 +78,13 @@ class UserAddr(Base):
             self.block_c += 1
             db.Session.add(self)
 
-    # noinspection DuplicatedCode
-    def addr_hist_del(self, db: DB, addr_hist_pk: int) -> bool:
+    def addr_hist_del(self, db: DB, user_addr_hist_pk: int) -> bool:
         uah: Optional[UserAddrHist] = db.Session.query(
             UserAddrHist
         ).where(
             and_(
                 UserAddrHist.user_addr_pk == self.pkid,
-                UserAddrHist.addr_hist_pk == addr_hist_pk
+                UserAddrHist.addr_hist_pk == user_addr_hist_pk
             )
         ).one_or_none()
 

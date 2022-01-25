@@ -58,10 +58,11 @@ class HyDbClient(BaseRPC):
             callback_fn=callback
         )
 
-    async def sse_block_async(self, callback_fn: Callable):
-        def callback(event: str, data: object):
-            if event == "block" and isinstance(data, int):
-                asyncio.run_coroutine_threadsafe(callback_fn(data), asyncio.get_event_loop())
+    async def sse_block_async(self, callback_fn: Callable, loop: asyncio.AbstractEventLoop):
+        def callback(event: str, data: str):
+            if event == "block":
+                data: int = json.loads(data)
+                loop.create_task(callback_fn(data))
 
         return await self.asyncc._sse_get(
             path="/sse/block",
@@ -142,7 +143,7 @@ class HyDbClient(BaseRPC):
     def user_addr_hist_del(self, user: schemas.User, user_addr_hist: schemas.UserAddrHist) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
-                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.addr_hist.pkid}",
+                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.pkid}",
                 request_type="delete",
             )
         )
