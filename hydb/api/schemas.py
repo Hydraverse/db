@@ -96,11 +96,18 @@ class Block(BaseModel):
                 yield a
 
 
-class AddrHist(BaseModel):
+class AddrHistBase(BaseModel):
     pkid: int
-    block: Block
     addr_pk: int
+    block_pk: int
     info: AttrDict
+
+    class Config:
+        orm_mode = True
+
+
+class AddrHist(AddrHistBase):
+    block: Block
 
     class Config:
         orm_mode = True
@@ -156,13 +163,20 @@ class UserBase(BaseModel):
         orm_mode = True
 
 
-class UserAddrHist(BaseModel):
+class UserAddrHistBase(BaseModel):
     pkid: int
     user_addr_pk: int
+    addr_hist_pk: int
     date_create: datetime
     block_c: int
-    addr_hist: AddrHist
     data: Optional[AttrDict]
+
+    class Config:
+        orm_mode = True
+
+
+class UserAddrHist(UserAddrHistBase):
+    addr_hist: AddrHist
 
     class Config:
         orm_mode = True
@@ -233,8 +247,17 @@ class UserAddrResult(UserAddrBase):
         orm_mode = True
 
 
-class UserAddrHistResult(UserAddrHist):
+class UserAddrHistResult(UserAddrHistBase):
     user_addr: UserAddrResult
+    addr_hist: AddrHistBase
+
+    class Config:
+        orm_mode = True
+
+
+class BlockSSEResult(BaseModel):
+    block: Block
+    user_addr_hist: List[UserAddrHistResult]
 
     class Config:
         orm_mode = True

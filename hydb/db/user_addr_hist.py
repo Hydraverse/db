@@ -2,11 +2,13 @@ from __future__ import annotations
 
 from typing import List
 
-from sqlalchemy import Column, ForeignKey, Integer, Boolean, UniqueConstraint
+from sqlalchemy import Column, ForeignKey, Integer, and_
 from sqlalchemy.orm import relationship
 
 from .base import *
 from .db import DB
+from .addr_hist import AddrHist
+from .block import Block
 
 __all__ = "UserAddrHist",
 
@@ -39,3 +41,16 @@ class UserAddrHist(Base):
         user_addr_hist.remove(self)
         addr_hist._removed_user(db)
 
+    @staticmethod
+    def all_for_block(db: DB, block: Block) -> List[UserAddrHist]:
+        uahs: List[UserAddrHist] = db.Session.query(
+            UserAddrHist
+        ).join(
+            AddrHist,
+            and_(
+                AddrHist.pkid == UserAddrHist.addr_hist_pk,
+                AddrHist.block_pk == block.pkid,
+            )
+        ).all()
+
+        return uahs

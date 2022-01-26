@@ -1,12 +1,14 @@
 import asyncio
 from typing import Optional, Any, Callable, Coroutine
+
+import sseclient
 from sseclient import SSEClient
 import json
 
 from hydra.rpc.base import BaseRPC
 from ..util.conf import Config, AttrDict
 from ..util.asyncc import AsyncMethods
-from . import schemas
+from . import events, schemas
 
 
 @Config.defaults
@@ -25,7 +27,7 @@ class HyDbClient(BaseRPC):
             response_factory=BaseRPC.RESPONSE_FACTORY_JSON
         )
 
-    def _sse_get(self, path: str, callback_fn: Callable[[str, str], None]):
+    def _sse_client(self, path: str) -> SSEClient:
         rsp = self.request(
             request_type="get",
             path=path,
@@ -36,10 +38,16 @@ class HyDbClient(BaseRPC):
             },
         )
 
-        sse_client = SSEClient(rsp)
+        return SSEClient(rsp)
 
-        for event in sse_client.events():
-            callback_fn(event.event, event.data)
+    def _sse_get(self, path: str, callback_fn: Callable[[sseclient.Event], None]):
+        sse_client = self._sse_client(path)
+
+        try:
+            for event in sse_client.events():
+                callback_fn(event)
+        finally:
+            sse_client.close()
 
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
@@ -47,11 +55,20 @@ class HyDbClient(BaseRPC):
     def db_notify_block(self, block_pk: int) -> None:
         self.get(f"/db/notify/block/{block_pk}", response_factory=lambda rsp: None)
 
-    def sse_block(self, callback_fn: Callable[[int], None]):
-        def callback(event: str, data: str):
-            if event == "block":
-                data: int = json.loads(data)
-                return callback_fn(data)
+    def sse_block_get(self) -> schemas.BlockSSEResult:
+        sse_client = self._sse_client(path="/sse/block")
+
+        try:
+            for block_sse_result in events.yield_block_events(sse_client):
+                return block_sse_result
+        finally:
+            sse_client.close()
+
+    def sse_block(self, callback_fn: Callable[[schemas.BlockSSEResult], None]):
+        def callback(event: sseclient.Event):
+            if events.event_is_block(event):
+                block_sse_result = events.block_event_decode(event)
+                return callback_fn(block_sse_result)
 
         return self._sse_get(
             path="/sse/block",
@@ -59,10 +76,10 @@ class HyDbClient(BaseRPC):
         )
 
     async def sse_block_async(self, callback_fn: Callable, loop: asyncio.AbstractEventLoop):
-        def callback(event: str, data: str):
-            if event == "block":
-                data: int = json.loads(data)
-                loop.create_task(callback_fn(data))
+        def callback(event: sseclient.Event):
+            if events.event_is_block(event):
+                block_sse_result = events.block_event_decode(event)
+                loop.create_task(callback_fn(block_sse_result))
 
         return await self.asyncc._sse_get(
             path="/sse/block",
@@ -83,14 +100,14 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_del(self, user: schemas.User) -> None:
+    def user_del(self, user: schemas.UserBase) -> None:
         self.post(
             f"/u/{user.uniq.pkid}",
             request_type="delete",
             **schemas.UserDelete(tg_user_id=user.tg_user_id).dict(),
         )
 
-    def user_info_put(self, user: schemas.User, info: AttrDict, over: bool = False) -> schemas.UserInfoUpdate.Result:
+    def user_info_put(self, user: schemas.UserBase, info: AttrDict, over: bool = False) -> schemas.UserInfoUpdate.Result:
         return schemas.UserInfoUpdate.Result(
             **self.post(
                 f"/u/{user.uniq.pkid}/info",
@@ -99,7 +116,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_get(self, user: schemas.User, address: str) -> Optional[schemas.UserAddr]:
+    def user_addr_get(self, user: schemas.UserBase, address: str) -> Optional[schemas.UserAddr]:
         result = self.get(
             f"/u/{user.uniq.pkid}/a/{address}",
         )
@@ -108,7 +125,7 @@ class HyDbClient(BaseRPC):
             **result
         )
 
-    def user_addr_add(self, user: schemas.User, address: str) -> schemas.UserAddr:
+    def user_addr_add(self, user: schemas.UserBase, address: str) -> schemas.UserAddr:
         return schemas.UserAddr(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/",
@@ -116,7 +133,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_del(self, user: schemas.User, user_addr: schemas.UserAddr) -> schemas.DeleteResult:
+    def user_addr_del(self, user: schemas.UserBase, user_addr: schemas.UserAddrBase) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/{user_addr.pkid}",
@@ -124,7 +141,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_token_add(self, user_addr: schemas.UserAddr, address: str) -> schemas.UserAddrTokenAdd.Result:
+    def user_addr_token_add(self, user_addr: schemas.UserAddrBase, address: str) -> schemas.UserAddrTokenAdd.Result:
         return schemas.UserAddrTokenAdd.Result(
             **self.post(
                 f"/u/{user_addr.user_pk}/a/{user_addr.pkid}/t",
@@ -132,7 +149,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_token_del(self, user_addr: schemas.UserAddr, address: str) -> schemas.DeleteResult:
+    def user_addr_token_del(self, user_addr: schemas.UserAddrBase, address: str) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user_addr.user_pk}/a/{user_addr.pkid}/t/{address}",
@@ -140,7 +157,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_hist_del(self, user: schemas.User, user_addr_hist: schemas.UserAddrHist) -> schemas.DeleteResult:
+    def user_addr_hist_del(self, user: schemas.UserBase, user_addr_hist: schemas.UserAddrHistBase) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.pkid}",

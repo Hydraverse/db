@@ -96,3 +96,18 @@ def user_addr_hist_del(db: DB, user_addr: models.UserAddr, user_addr_hist_pk: in
             user_addr_hist_pk=user_addr_hist_pk
         )
     )
+
+
+def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
+    return db.Session.query(
+        models.Block
+    ).where(
+        models.Block.pkid == block_pk
+    ).one_or_none()
+
+
+def block_sse_result(db: DB, block: models.Block) -> schemas.BlockSSEResult:
+    return schemas.BlockSSEResult(
+        block=block,
+        user_addr_hist=models.UserAddrHist.all_for_block(db, block)
+    )

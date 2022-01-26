@@ -6,7 +6,7 @@ from ..db import DB
 
 from .crud import models, schemas
 from . import crud
-from . import event
+from . import events
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
@@ -28,13 +28,23 @@ def server_info():
 
 
 @app.get("/db/notify/block/{block_pk}")
-def db_notify_block(block_pk: int):
-    event.block_event_notify(block_pk)
+def db_notify_block(block_pk: int, db: DB = Depends(dbase.yield_with_session)):
+    block: models.Block = crud.block_get(db=db, block_pk=block_pk)
+
+    if block is None:
+        raise HTTPException(status_code=404, detail=f"Block #{block_pk} not found.")
+
+    block_sse_result: schemas.BlockSSEResult = crud.block_sse_result(
+        db=db,
+        block=block
+    )
+
+    events.block_event_notify(block_sse_result)
 
 
 @app.router.get('/sse/block')
 async def sse_block(request: Request):
-    event_generator = event.block_event_generator(request)
+    event_generator = events.block_event_generator(request)
     return EventSourceResponse(event_generator)
 
 
