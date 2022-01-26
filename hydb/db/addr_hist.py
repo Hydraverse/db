@@ -1,11 +1,14 @@
 from __future__ import annotations
 
+from typing import List
+
 from hydra import log
 from sqlalchemy import Column, ForeignKey, Integer
 from sqlalchemy.orm import relationship
 
 from .base import *
 from .db import DB
+from .block import Block
 
 __all__ = "AddrHist",
 
@@ -37,3 +40,13 @@ class AddrHist(Base):
         block = self.block
         addr_hist.remove(self)
         block._removed_hist(db)
+
+    @staticmethod
+    def all_for_block(db: DB, block: Block) -> List[AddrHist]:
+        ahs: List[AddrHist] = db.Session.query(
+            AddrHist
+        ).where(
+            AddrHist.block_pk == block.pkid,
+        ).all()
+
+        return ahs

@@ -127,11 +127,15 @@ class Addr(BaseModel):
     block_h: int
     info: AttrDict
 
+    class Config:
+        orm_mode = True
+
     def __str__(self):
         return self.addr_hy if self.addr_tp.value == Addr.Type.H else self.addr_hx
 
-    class Config:
-        orm_mode = True
+    def filter_tx(self, block: Block):
+        addr_match = lambda addrs: self.addr_hx in addrs or self.addr_hy in addrs
+        return filter(lambda tx: addr_match(list(Block.tx_yield_addrs(tx))), block.tx)
 
 
 class UserUniq(BaseModel):
@@ -189,25 +193,29 @@ class UserAddrBase(BaseModel):
     date_create: datetime
     date_update: Optional[datetime]
     block_c: int
-    token_l: Dict[str, dict]
+    token_l: List[str]
+
+    class Config:
+        orm_mode = True
+
+    def filter_info_token_balances(self, info: dict):
+        return filter(
+            lambda bal: bal["addressHex"] in self.token_l,
+            info.get("qrc20Balances", [])
+            + info.get("qrc721Balances", [])
+        )
+
+
+class UserAddr(UserAddrBase):
     addr: Addr
+
+    user_addr_hist: Optional[List[UserAddrHist]]
 
     class Config:
         orm_mode = True
 
     def filter_addr_token_balances(self):
-        return filter(
-            lambda bal: bal["addressHex"] in self.token_l,
-            self.addr.info.get("qrc20Balances", [])
-            + self.addr.info.get("qrc721Balances", [])
-        )
-
-
-class UserAddr(UserAddrBase):
-    user_addr_hist: Optional[List[UserAddrHist]]
-
-    class Config:
-        orm_mode = True
+        return self.filter_info_token_balances(self.addr.info)
 
 
 class UserAddrAdd(BaseModel):
@@ -247,9 +255,15 @@ class UserAddrResult(UserAddrBase):
         orm_mode = True
 
 
-class UserAddrHistResult(UserAddrHistBase):
-    user_addr: UserAddrResult
-    addr_hist: AddrHistBase
+class AddrResult(Addr):
+    addr_users: List[UserAddrResult]
+
+    class Config:
+        orm_mode = True
+
+
+class AddrHistResult(AddrHistBase):
+    addr: AddrResult
 
     class Config:
         orm_mode = True
@@ -257,7 +271,7 @@ class UserAddrHistResult(UserAddrHistBase):
 
 class BlockSSEResult(BaseModel):
     block: Block
-    user_addr_hist: List[UserAddrHistResult]
+    hist: List[AddrHistResult]
 
     class Config:
         orm_mode = True

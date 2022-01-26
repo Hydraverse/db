@@ -109,5 +109,5 @@ def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
 def block_sse_result(db: DB, block: models.Block) -> schemas.BlockSSEResult:
     return schemas.BlockSSEResult(
         block=block,
-        user_addr_hist=models.UserAddrHist.all_for_block(db, block)
+        hist=models.AddrHist.all_for_block(db, block)
     )
