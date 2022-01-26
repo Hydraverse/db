@@ -24,7 +24,7 @@ class UserAddr(Base):
     date_create = DbDateCreateColumn()
     date_update = DbDateUpdateColumn()
     block_c = Column(Integer, nullable=False, default=0)
-    token_l = DbDataColumn(default={})
+    token_l = DbDataColumn(default=[])
 
     user = relationship("User", back_populates="user_addrs")
     addr = relationship("Addr", back_populates="addr_users")
@@ -37,7 +37,7 @@ class UserAddr(Base):
     )
 
     def token_addr_add(self, db: DB, address: str) -> Dict[str, dict]:
-        addr_tp, addr_hx, addr_hy, sc_info = Addr.normalize(db, address)
+        addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)
 
         if addr_tp not in (Addr.Type.T, Addr.Type.N):
             return self.token_l
@@ -45,7 +45,7 @@ class UserAddr(Base):
         if addr_hx in self.token_l:
             return self.token_l
 
-        self.token_l[addr_hx] = sc_info
+        self.token_l.append(addr_hx)
         db.Session.add(self)
         db.Session.commit()
         db.Session.refresh(self)
@@ -60,7 +60,7 @@ class UserAddr(Base):
         if addr_hx not in self.token_l:
             return False
 
-        del self.token_l[addr_hx]
+        self.token_l.remove(addr_hx)
         db.Session.add(self)
         db.Session.commit()
         return True
