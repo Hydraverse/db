@@ -255,15 +255,16 @@ class UserAddrResult(UserAddrBase):
         orm_mode = True
 
 
-class AddrResult(Addr):
-    addr_users: List[UserAddrResult]
+class UserAddrHistResult(UserAddrHistBase):
+    user_addr: UserAddrResult
 
     class Config:
         orm_mode = True
 
 
 class AddrHistResult(AddrHistBase):
-    addr: AddrResult
+    addr: Addr
+    addr_hist_user: List[UserAddrHistResult]
 
     class Config:
         orm_mode = True

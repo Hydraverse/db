@@ -31,7 +31,7 @@ class HyDbClient(BaseRPC):
         rsp = self.request(
             request_type="get",
             path=path,
-            response_factory=lambda rsp_: rsp_,
+            response_factory=BaseRPC.RESPONSE_FACTORY_RESP,
             stream=True,
             headers={
                 "Accept": "text/event-stream",
