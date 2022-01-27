@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Optional, List, Dict
 
+from attrdict import AttrDict
 from sqlalchemy import Column, ForeignKey, Integer, and_, UniqueConstraint
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
@@ -36,20 +37,21 @@ class UserAddr(Base):
         single_parent=True,
     )
 
-    def token_addr_add(self, db: DB, address: str) -> Dict[str, dict]:
-        addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)
+    def token_addr_add(self, db: DB, address: str) -> AttrDict:
+        addr_tp, addr_hx, addr_hy, addr_info = Addr.normalize(db, address)
 
-        if addr_tp not in (Addr.Type.T, Addr.Type.N):
-            return self.token_l
+        addr_info.addr_tp = addr_tp
+        addr_info.addr_hx = addr_hx
+        addr_info.addr_hy = addr_hy
+        addr_info.added = False
 
-        if addr_hx in self.token_l:
-            return self.token_l
+        if addr_tp in (Addr.Type.T, Addr.Type.N) and addr_hx not in self.token_l:
+            self.token_l.append(addr_hx)
+            db.Session.add(self)
+            db.Session.commit()
+            addr_info.added = True
 
-        self.token_l.append(addr_hx)
-        db.Session.add(self)
-        db.Session.commit()
-        db.Session.refresh(self)
-        return self.token_l
+        return addr_info
 
     def token_addr_del(self, db: DB, address: str) -> bool:
         addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)

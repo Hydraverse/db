@@ -226,7 +226,14 @@ class UserAddrTokenAdd(BaseModel):
     address: str
 
     class Result(BaseModel):
-        token_l: Dict[str, dict]
+        added: bool
+        addr_tp: EnumModel[Addr.Type]
+        addr_hx: str
+        addr_hy: str
+        name: Optional[str]
+        symbol: Optional[int]
+        totalSupply: Optional[int]
+        decimals: Optional[int]
 
 
 class User(UserBase):
