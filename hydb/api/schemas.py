@@ -103,6 +103,7 @@ class AddrHistBase(BaseModel):
     block_pk: int
     info_old: AttrDict
     info_new: AttrDict
+    mined: bool
 
     class Config:
         orm_mode = True
