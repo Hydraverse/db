@@ -32,6 +32,7 @@ class Block(BaseModel):
     pkid: int
     height: int
     hash: str
+    conf: int
     info: AttrDict
     tx: List[AttrDict]
 

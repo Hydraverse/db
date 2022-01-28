@@ -35,6 +35,9 @@ class Block(Base):
     pkid = DbPkidColumn(seq="block_seq")
     height = Column(Integer, nullable=False, unique=False, primary_key=False, index=True)
     hash = Column(String(64), nullable=False, unique=True, primary_key=False, index=True)
+    conf = Column(Integer, nullable=False, index=True)
+    info = DbInfoColumn()
+    tx = DbDataColumn()
 
     addr_hist = relationship(
         "AddrHist",
@@ -42,9 +45,6 @@ class Block(Base):
         cascade="all, delete-orphan",
         single_parent=True,
     )
-
-    info = DbInfoColumn()
-    tx = DbDataColumn()
 
     CONF_MATURE = 501
 
@@ -90,6 +90,8 @@ class Block(Base):
 
         added_history = False
 
+        self.conf = info["confirmations"]
+        del info["confirmations"]
         self.info = info
         self.tx = txes
 
@@ -102,29 +104,35 @@ class Block(Base):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
     def update_confirmations(self, db: DB):
-        confirmations = self.info["confirmations"]
+        confirmations = self.conf
 
         if confirmations < Block.CONF_MATURE:
 
             conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
 
             if conf >= Block.CONF_MATURE:
-                self.info["confirmations"] = conf
-                updated = False
+                self.conf = conf
 
-                for addr_hist in self.addr_hist:
-                    updated |= addr_hist.on_block_mature()
+                if len(self.addr_hist):
+                    for addr_hist in self.addr_hist:
+                        addr_hist.on_block_mature()
 
-                db.Session.add(self)
-                db.Session.commit()
+                    db.Session.add(self)
+                    db.Session.commit()
 
-                if updated:
                     try:
                         db.api.sse_block_notify_mature(block_pk=self.pkid)
                     except BaseRPC.Exception as exc:
                         log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
                     else:
                         log.info(f"Sent notification for matured block #{self.pkid}")
+                else:
+                    # This condition is currently not possible due to cascading deletes,
+                    #  only because AddrHist.on_block_mature() never deletes (only happens post notify).
+                    #
+                    log.warning(f"Deleting matured block at height {self.height} with no history.")
+                    db.Session.delete(self)
+                    db.Session.commit()
 
     @staticmethod
     def update_confirmations_all(db: DB):
@@ -135,7 +143,7 @@ class Block(Base):
         ).order_by(
             asc(Block.height)
         ).filter(
-            Block.info["confirmations"] < Block.CONF_MATURE
+            Block.conf < Block.CONF_MATURE
         ).all()
 
         for block in blocks:
