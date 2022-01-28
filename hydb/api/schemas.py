@@ -101,7 +101,8 @@ class AddrHistBase(BaseModel):
     pkid: int
     addr_pk: int
     block_pk: int
-    info: AttrDict
+    info_old: AttrDict
+    info_new: AttrDict
 
     class Config:
         orm_mode = True
