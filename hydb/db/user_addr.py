@@ -1,9 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional, List, Dict
+from typing import Optional
 
 from attrdict import AttrDict
-from sqlalchemy import Column, ForeignKey, Integer, and_, UniqueConstraint
+from datetime import datetime
+from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -24,6 +25,7 @@ class UserAddr(Base):
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()
     date_update = DbDateUpdateColumn()
+    block_t = Column(DateTime, nullable=True)
     block_c = Column(Integer, nullable=False, default=0)
     token_l = DbDataColumn(default=[])
 
@@ -71,12 +73,14 @@ class UserAddr(Base):
         user_addr_hist = UserAddrHist(
             user_addr=self,
             addr_hist=addr_hist,
+            block_t=self.block_t,
             block_c=self.block_c,
         )
 
         db.Session.add(user_addr_hist)
 
         if addr_hist.block.info.get("miner", "") == self.addr.addr_hy:
+            self.block_t = datetime.utcfromtimestamp(addr_hist.block.info.get("timestamp"))
             self.block_c += 1
             db.Session.add(self)
 

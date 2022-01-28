@@ -82,11 +82,23 @@ class Addr(Base):
     def __hash__(self):
         return hash(str(self))
 
-    def update_info(self, db: DB, block: Optional[Block]) -> bool:
-        height = block.height if block is not None else db.rpc.getblockcount()
+    def on_block_create(self, db: DB, block: Block) -> bool:
+        addr_hist: AddrHist = AddrHist(block=block, addr=self, info=dict(self.info))
 
-        if self.block_h == height:
+        if not len(self.addr_users):  # Should never happen, but...
+            db.Session.delete(addr_hist)
             return False
+        else:
+            self.update_info(db)
+
+            db.Session.add(addr_hist)
+
+            for addr_user in self.addr_users:
+                addr_user.on_new_addr_hist(db, addr_hist)
+
+            return True
+
+    def update_info(self, db: DB) -> Optional[AttrDict]:
 
         try:
             if self.addr_tp == Addr.Type.H:
@@ -103,35 +115,19 @@ class Addr(Base):
 
         except BaseRPC.Exception as exc:
             log.critical(f"Addr RPC error: {str(exc)}", exc_info=exc)
-            return False
-
-        self.block_h = height
+            return None
 
         for qrc721entry in info.get("qrc721Balances", []):
             qrc721entry["uris"] = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
-        addr_hist: Optional[AddrHist] = None
-
-        if block is not None:
-            addr_hist = AddrHist(block=block, addr=self, info=dict(self.info))
+        info_prev = None
 
         if self.info != info:
+            info_prev = AttrDict(self.info)
             self.info = info
             db.Session.add(self)
 
-        if addr_hist is not None:
-            if not len(self.addr_users):  # Should never happen, but...
-                db.Session.delete(addr_hist)
-                return False
-            else:
-                db.Session.add(addr_hist)
-
-                for addr_user in self.addr_users:
-                    addr_user.on_new_addr_hist(db, addr_hist)
-
-                return True
-
-        return False
+        return info_prev
 
     @lru_cache(maxsize=None)
     def nft_uris_from(self, db: DB, nft_addr_hx: str, count: int) -> dict:
@@ -175,7 +171,7 @@ class Addr(Base):
                 db.rpc.importaddress(self.addr_hy, self.addr_hy)
 
     def __on_new_addr(self, db: DB):
-        self.update_info(db, block=None)
+        self.update_info(db)
         db.Session.commit()
         db.Session.refresh(self)
 

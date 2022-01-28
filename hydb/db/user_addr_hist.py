@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from sqlalchemy import Column, ForeignKey, Integer, and_
+from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime
 from sqlalchemy.orm import relationship
 
 from .base import *
@@ -20,6 +20,7 @@ class UserAddrHist(Base):
     user_addr_pk = Column(Integer, ForeignKey("user_addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     addr_hist_pk = Column(Integer, ForeignKey("addr_hist.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()
+    block_t = Column(DateTime, nullable=True)
     block_c = Column(Integer, nullable=False)
     data = DbDataColumn()
 

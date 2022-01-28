@@ -92,7 +92,7 @@ class Block(Base):
         self.tx = txes
 
         for addr in addrs:
-            added_history |= addr.update_info(db, block=self)
+            added_history |= addr.on_block_create(db=db, block=self)
 
         return added_history
 
