@@ -3,7 +3,7 @@ from __future__ import annotations
 from typing import List
 
 from hydra import log
-from sqlalchemy import Column, ForeignKey, Integer
+from sqlalchemy import Column, ForeignKey, Integer, Boolean
 from sqlalchemy.orm import relationship
 
 from .base import *
@@ -30,6 +30,13 @@ class AddrHist(Base):
         cascade="all, delete-orphan",
         single_parent=True,
     )
+
+    @property
+    def mined(self) -> bool:
+        return self.block.info.get("miner", "") == self.addr.addr_hy
+
+    def on_block_mature(self, db: DB):
+        self.addr.update_info(db)
 
     def _removed_user(self, db: DB):
         if not len(self.addr_hist_user):

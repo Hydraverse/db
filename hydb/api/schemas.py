@@ -172,6 +172,7 @@ class UserAddrHistBase(BaseModel):
     user_addr_pk: int
     addr_hist_pk: int
     date_create: datetime
+    block_t: Optional[datetime]
     block_c: int
     data: Optional[AttrDict]
 
@@ -192,6 +193,7 @@ class UserAddrBase(BaseModel):
     addr_pk: int
     date_create: datetime
     date_update: Optional[datetime]
+    block_t: Optional[datetime]
     block_c: int
     token_l: List[str]
 
@@ -277,7 +279,13 @@ class AddrHistResult(AddrHistBase):
         orm_mode = True
 
 
+class SSEBlockEvent(str, enum.Enum):
+    create = "create"
+    mature = "mature"
+
+
 class BlockSSEResult(BaseModel):
+    event: SSEBlockEvent
     block: Block
     hist: List[AddrHistResult]
 

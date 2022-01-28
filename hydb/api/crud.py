@@ -106,8 +106,9 @@ def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
     ).one_or_none()
 
 
-def block_sse_result(db: DB, block: models.Block) -> schemas.BlockSSEResult:
+def block_sse_result(db: DB, block: models.Block, event: schemas.SSEBlockEvent) -> schemas.BlockSSEResult:
     return schemas.BlockSSEResult(
+        event=event,
         block=block,
         hist=models.AddrHist.all_for_block(db, block)
     )

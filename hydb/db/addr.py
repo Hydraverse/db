@@ -98,7 +98,13 @@ class Addr(Base):
 
             return True
 
-    def update_info(self, db: DB) -> Optional[AttrDict]:
+    def update_info(self, db: DB) -> bool:
+        block_height: int = db.rpc.getblockcount()
+
+        if self.info and block_height <= self.block_h:
+            return False
+
+        self.block_h = block_height
 
         try:
             if self.addr_tp == Addr.Type.H:
@@ -115,19 +121,17 @@ class Addr(Base):
 
         except BaseRPC.Exception as exc:
             log.critical(f"Addr RPC error: {str(exc)}", exc_info=exc)
-            return None
+            return False
 
         for qrc721entry in info.get("qrc721Balances", []):
             qrc721entry["uris"] = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
-        info_prev = None
-
         if self.info != info:
-            info_prev = AttrDict(self.info)
             self.info = info
             db.Session.add(self)
+            return True
 
-        return info_prev
+        return False
 
     @lru_cache(maxsize=None)
     def nft_uris_from(self, db: DB, nft_addr_hx: str, count: int) -> dict:
@@ -137,8 +141,8 @@ class Addr(Base):
             r = db.rpc.callcontract(
                 nft_addr_hx,
                 Addr.ContractMethodID.tokenOfOwnerByIndex
-                + self.addr_hx.rjust(64, "0")
-                + hex(token_no)[2:].rjust(64, "0")
+                + self.addr_hx.zfill(64)
+                + hex(token_no)[2:].zfill(64)
             )
 
             if r.executionResult.excepted != "None":
@@ -251,7 +255,7 @@ class Addr(Base):
             elif addr_tp == Addr.Type.S:
 
                 try:
-                    addr_hx = hex(int(address, 16))[2:].rjust(40, "0")  # ValueError on int() fail
+                    addr_hx = hex(int(address, 16))[2:].zfill(40)  # ValueError on int() fail
                 except ValueError:
                     raise ValueError(f"Invalid HYDRA or smart contract address '{address}' (conversion failed)")
 

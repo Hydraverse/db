@@ -79,7 +79,7 @@ class UserAddr(Base):
 
         db.Session.add(user_addr_hist)
 
-        if addr_hist.block.info.get("miner", "") == self.addr.addr_hy:
+        if addr_hist.mined:
             self.block_t = datetime.utcfromtimestamp(addr_hist.block.info.get("timestamp"))
             self.block_c += 1
             db.Session.add(self)

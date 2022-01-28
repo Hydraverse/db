@@ -7,7 +7,7 @@ from typing import Optional, List
 
 from hydra import log
 from hydra.rpc import BaseRPC
-from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select
+from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select, asc
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -45,6 +45,8 @@ class Block(Base):
 
     info = DbInfoColumn()
     tx = DbDataColumn()
+
+    CONF_MATURE = 501
 
     def _removed_hist(self, db: DB):
         if not len(self.addr_hist):
@@ -99,6 +101,46 @@ class Block(Base):
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
+    def update_confirmations(self, db: DB):
+        confirmations = self.info["confirmations"]
+
+        if confirmations < Block.CONF_MATURE:
+
+            conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
+
+            if conf >= Block.CONF_MATURE:
+                self.info["confirmations"] = conf
+                updated = False
+
+                for addr_hist in self.addr_hist:
+                    updated |= addr_hist.on_block_mature()
+
+                db.Session.add(self)
+                db.Session.commit()
+
+                if updated:
+                    try:
+                        db.api.sse_block_notify_mature(block_pk=self.pkid)
+                    except BaseRPC.Exception as exc:
+                        log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
+                    else:
+                        log.info(f"Sent notification for matured block #{self.pkid}")
+
+    @staticmethod
+    def update_confirmations_all(db: DB):
+        """Update confirmations on stored blocks.
+        """
+        blocks: List[Block] = db.Session.query(
+            Block
+        ).order_by(
+            asc(Block.height)
+        ).filter(
+            Block.info["confirmations"] < Block.CONF_MATURE
+        ).all()
+
+        for block in blocks:
+            block.update_confirmations(db)
+
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
         try:
@@ -132,7 +174,7 @@ class Block(Base):
             log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
 
             try:
-                db.api.db_notify_block(block_pk=new_block.pkid)
+                db.api.sse_block_notify_create(block_pk=new_block.pkid)
             except BaseRPC.Exception as exc:
                 log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
             else:
@@ -144,39 +186,12 @@ class Block(Base):
         db.Session.rollback()
 
     @staticmethod
-    async def update_task_async(db: DB) -> None:
-        # await asyncio.sleep(30)
-
-        try:
-            while 1:
-                await Block.update_async(db)
-                await asyncio.sleep(15)
-        except KeyboardInterrupt:
-            pass
-        except CancelledError:
-            pass
-
-    @staticmethod
-    async def update_async(db: DB) -> None:
-        # noinspection PyBroadException
-        try:
-            if LocalState.height == 0:
-                await db.in_session_async(Block.__update_init, db)
-
-            return await db.in_session_async(Block.update, db)
-        except KeyboardInterrupt:
-            raise
-        except CancelledError:
-            raise
-        except BaseException as exc:
-            log.critical(f"Block.update exception: {str(exc)}", exc_info=exc)
-
-    @staticmethod
     def update_task(db: DB) -> None:
         try:
             Block.__update_init(db)
 
             while 1:
+                Block.update_confirmations_all(db)
                 Block.update(db)
                 time.sleep(15)
 

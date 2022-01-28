@@ -52,8 +52,17 @@ class HyDbClient(BaseRPC):
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
 
-    def db_notify_block(self, block_pk: int) -> None:
-        self.get(f"/db/notify/block/{block_pk}", response_factory=lambda rsp: None)
+    def sse_block_notify_create(self, block_pk: int) -> None:
+        self.get(
+            path=f"/sse/block/{block_pk}/{schemas.SSEBlockEvent.create}",
+            response_factory=lambda rsp: None
+        )
+
+    def sse_block_notify_mature(self, block_pk: int) -> None:
+        self.get(
+            path=f"/sse/block/{block_pk}/{schemas.SSEBlockEvent.mature}",
+            response_factory=lambda rsp: None
+        )
 
     def sse_block_get(self) -> schemas.BlockSSEResult:
         sse_client = self._sse_client(path="/sse/block")

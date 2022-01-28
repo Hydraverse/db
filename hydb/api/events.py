@@ -1,6 +1,6 @@
 from asyncio import Semaphore
 import json
-from typing import Generator, Iterable
+from typing import Iterable
 
 import sseclient
 
@@ -37,7 +37,9 @@ def event_is_block(event: sseclient.Event):
 
 
 def block_event_decode(event: sseclient.Event):
-    return schemas.BlockSSEResult(**json.loads(event.data))
+    return schemas.BlockSSEResult(
+        **json.loads(event.data)
+    )
 
 
 def filter_block_events(sse_client: sseclient.SSEClient) -> Iterable[sseclient.Event]:

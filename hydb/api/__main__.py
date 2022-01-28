@@ -27,16 +27,21 @@ def server_info():
     return crud.server_info(db=dbase)
 
 
-@app.get("/db/notify/block/{block_pk}")
-def db_notify_block(block_pk: int, db: DB = Depends(dbase.yield_with_session)):
+@app.get("/sse/block/{block_pk}/{block_ev}")
+def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Depends(dbase.yield_with_session)):
     block: models.Block = crud.block_get(db=db, block_pk=block_pk)
 
     if block is None:
         raise HTTPException(status_code=404, detail=f"Block #{block_pk} not found.")
 
+    if block_ev not in (schemas.SSEBlockEvent.create, schemas.SSEBlockEvent.mature):
+        # Should not be allowed to happen per schema.
+        raise HTTPException(status_code=500, detail=f"Unknown block event '{block_ev}'.")
+
     block_sse_result: schemas.BlockSSEResult = crud.block_sse_result(
         db=db,
-        block=block
+        block=block,
+        event=block_ev
     )
 
     events.block_event_notify(block_sse_result)
