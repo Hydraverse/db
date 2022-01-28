@@ -83,20 +83,21 @@ class Addr(Base):
         return hash(str(self))
 
     def on_block_create(self, db: DB, block: Block) -> bool:
-        addr_hist: AddrHist = AddrHist(block=block, addr=self, info=dict(self.info))
-
-        if not len(self.addr_users):  # Should never happen, but...
-            db.Session.delete(addr_hist)
+        if not len(self.addr_users):  # Should not happen for now, but...
             return False
-        else:
-            self.update_info(db)
 
-            db.Session.add(addr_hist)
+        info_old = dict(self.info)
 
-            for addr_user in self.addr_users:
-                addr_user.on_new_addr_hist(db, addr_hist)
+        self.update_info(db)
 
-            return True
+        addr_hist: AddrHist = AddrHist(block=block, addr=self, info_old=info_old, info_new=self.info)
+
+        db.Session.add(addr_hist)
+
+        for addr_user in self.addr_users:
+            addr_user.on_new_addr_hist(db, addr_hist)
+
+        return True
 
     def update_info(self, db: DB) -> bool:
         block_height: int = db.rpc.getblockcount()

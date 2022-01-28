@@ -19,7 +19,8 @@ class AddrHist(Base):
     pkid = DbPkidColumn(seq="addr_hist_seq")
     block_pk = Column(Integer, ForeignKey("block.pkid", ondelete="CASCADE"), nullable=False, primary_key=True)
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), nullable=False, primary_key=True)
-    info = DbInfoColumn()
+    info_old = DbInfoColumn()
+    info_new = DbInfoColumn()
 
     block = relationship("Block", back_populates="addr_hist")
     addr = relationship("Addr", back_populates="addr_hist")
@@ -37,6 +38,11 @@ class AddrHist(Base):
 
     def on_block_mature(self, db: DB):
         self.addr.update_info(db)
+
+        self.info_old = self.info_new
+        self.info_new = self.addr.info
+
+        db.Session.add(self)
 
     def _removed_user(self, db: DB):
         if not len(self.addr_hist_user):
