@@ -85,19 +85,11 @@ class UserAddr(Base):
             db.Session.add(self)
 
     def addr_hist_del(self, db: DB, user_addr_hist_pk: int) -> bool:
-        uah: Optional[UserAddrHist] = db.Session.query(
-            UserAddrHist
-        ).where(
-            and_(
-                UserAddrHist.user_addr_pk == self.pkid,
-                UserAddrHist.addr_hist_pk == user_addr_hist_pk
-            )
-        ).one_or_none()
-
-        if uah is not None:
-            uah._remove(db, self.user_addr_hist)
-            db.Session.commit()
-            return True
+        for uah in self.user_addr_hist:
+            if uah.pkid == user_addr_hist_pk:
+                uah._remove(db, self.user_addr_hist)
+                db.Session.commit()
+                return True
 
         return False
 
