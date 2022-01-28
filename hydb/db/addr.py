@@ -64,6 +64,7 @@ class Addr(Base):
 
     addr_users = relationship(
         "UserAddr",
+        order_by="UserAddr.pkid",
         back_populates="addr",
         cascade="all, delete-orphan",
         single_parent=True,

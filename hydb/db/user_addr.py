@@ -34,6 +34,7 @@ class UserAddr(Base):
 
     user_addr_hist = relationship(
         UserAddrHist,
+        order_by=UserAddrHist.pkid,
         back_populates="user_addr",
         cascade="all, delete-orphan",
         single_parent=True,

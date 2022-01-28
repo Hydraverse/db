@@ -27,6 +27,7 @@ class AddrHist(Base):
 
     addr_hist_user = relationship(
         "UserAddrHist",
+        order_by="UserAddrHist.pkid",
         back_populates="addr_hist",
         cascade="all, delete-orphan",
         single_parent=True,

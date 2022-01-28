@@ -41,6 +41,7 @@ class Block(Base):
 
     addr_hist = relationship(
         "AddrHist",
+        order_by="AddrHist.pkid",
         back_populates="block",
         cascade="all, delete-orphan",
         single_parent=True,

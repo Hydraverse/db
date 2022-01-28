@@ -33,6 +33,7 @@ class User(Base):
 
     user_addrs = relationship(
         UserAddr,
+        order_by=UserAddr.pkid,
         back_populates="user",
         cascade="all, delete-orphan",
         single_parent=True,
