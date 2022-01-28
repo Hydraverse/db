@@ -1,26 +1,22 @@
 import asyncio
-from typing import Optional, Any, Callable, Coroutine
+from typing import Optional, Callable
 
 import sseclient
 from sseclient import SSEClient
-import json
 
 from hydra.rpc.base import BaseRPC
 from ..util.conf import Config, AttrDict
-from ..util.asyncc import AsyncMethods
 from . import events, schemas
 
 
 @Config.defaults
 class HyDbClient(BaseRPC):
-    asyncc: AsyncMethods
 
     CONF = AttrDict(
         url="http://127.0.0.1:8000"
     )
 
     def __init__(self):
-        self.asyncc = AsyncMethods(self)
         conf = Config.get(HyDbClient, defaults=True, save_defaults=True)
         super().__init__(
             url=conf.url,
