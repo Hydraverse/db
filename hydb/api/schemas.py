@@ -219,7 +219,7 @@ class UserAddrBase(BaseModel):
 class UserAddr(UserAddrBase):
     addr: Addr
 
-    user_addr_hist: Optional[List[UserAddrHist]]
+    user_addr_hist: List[UserAddrHist]
 
     class Config:
         orm_mode = True
