@@ -165,7 +165,7 @@ class HyDbClient(BaseRPC):
     def user_addr_hist_del(self, user: schemas.UserBase, user_addr_hist: schemas.UserAddrHistBase) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
-                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/{user_addr_hist.pkid}",
+                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/h/{user_addr_hist.pkid}",
                 request_type="delete",
             )
         )
