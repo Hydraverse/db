@@ -115,7 +115,7 @@ class AddrHist(AddrHistBase):
         orm_mode = True
 
 
-class Addr(BaseModel):
+class AddrBase(BaseModel):
     class Type(str, enum.Enum):
         H = "HYDRA"
         S = "smart contract"
@@ -127,7 +127,6 @@ class Addr(BaseModel):
     addr_hy: str
     addr_tp: EnumModel[Type]
     block_h: int
-    info: AttrDict
 
     class Config:
         orm_mode = True
@@ -138,6 +137,13 @@ class Addr(BaseModel):
     def filter_tx(self, block: Block):
         addr_match = lambda addrs: self.addr_hx in addrs or self.addr_hy in addrs
         return filter(lambda tx: addr_match(list(Block.tx_yield_addrs(tx))), block.tx)
+
+
+class Addr(AddrBase):
+    info: AttrDict
+
+    class Config:
+        orm_mode = True
 
 
 class UserUniq(BaseModel):
@@ -274,7 +280,7 @@ class UserAddrHistResult(UserAddrHistBase):
 
 
 class AddrHistResult(AddrHistBase):
-    addr: Addr
+    addr: AddrBase
     addr_hist_user: List[UserAddrHistResult]
 
     class Config:
