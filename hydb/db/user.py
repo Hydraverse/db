@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Optional
+from typing import Optional, Union
 
 from attrdict import AttrDict
 from hydra import log
@@ -84,6 +84,7 @@ class User(Base):
                 log.error("User unique PKID name clash! Trying again.")
                 continue
 
+        # noinspection PyArgumentList
         user_ = User(
             uniq=uniq,
             tg_user_id=tg_user_id,
@@ -132,11 +133,8 @@ class User(Base):
             db.Session.refresh(self)
             return schemas.UserInfoUpdate.Result(info=self.info)
 
-    def addr_get(self, db: DB, address: str, create: bool = True) -> Optional[UserAddr]:
+    def addr_get(self, db: DB, address: str, create: Union[bool, str] = True) -> Optional[UserAddr]:
         return UserAddr.get(db=db, user=self, address=address, create=create)
-
-    def addr_get_pk(self, db: DB, addr_pk: int, create: bool = True) -> Optional[UserAddr]:
-        return UserAddr.get_by_addr_pk(db=db, user=self, addr_pk=addr_pk, create=create)
 
     def addr_del(self, db: DB, user_addr_pk: int) -> bool:
         ua: Optional[UserAddr] = db.Session.query(

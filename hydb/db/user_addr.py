@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from typing import Optional
+from typing import Optional, Union
 
 from attrdict import AttrDict
 from datetime import datetime
-from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime, String
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -13,6 +13,8 @@ from .db import DB
 from .addr import Addr
 from .addr_hist import AddrHist
 from .user_addr_hist import UserAddrHist
+
+from ..util import namegen
 
 __all__ = "UserAddr", "UserAddrHist"
 
@@ -25,6 +27,7 @@ class UserAddr(Base):
     addr_pk = Column(Integer, ForeignKey("addr.pkid", ondelete="CASCADE"), primary_key=True, nullable=False)
     date_create = DbDateCreateColumn()
     date_update = DbDateUpdateColumn()
+    name = Column(String, nullable=False)
     block_t = Column(DateTime, nullable=True)
     block_c = Column(Integer, nullable=False, default=0)
     token_l = DbDataColumn(default=[])
@@ -102,7 +105,7 @@ class UserAddr(Base):
         addr._removed_user(db)
 
     @staticmethod
-    def get_by_addr(db: DB, user, addr: Addr, create=True) -> Optional[UserAddr]:
+    def get_by_addr(db: DB, user, addr: Addr, create: Union[bool, str] = True) -> Optional[UserAddr]:
         try:
             q = db.Session.query(UserAddr).where(
                 and_(
@@ -119,6 +122,20 @@ class UserAddr(Base):
         except NoResultFound:
             # noinspection PyArgumentList
             ua = UserAddr(user=user, addr=addr)
+
+            if isinstance(create, str):
+                ua.name = create
+            else:
+                ua.name = namegen.make_single_name()
+
+            while 1:
+                for user_addr in filter(lambda ua_: ua_ != ua, user.user_addrs):
+                    if ua.name == user_addr.name:
+                        ua.name += " " + namegen.make_single_name()
+                        break
+                else:
+                    break
+
             db.Session.add(ua)
             db.Session.commit()
             db.Session.refresh(ua)
@@ -138,8 +155,8 @@ class UserAddr(Base):
         return UserAddr.get_by_addr(db, user, addr, create=create)
 
     @staticmethod
-    def get(db: DB, user, address: str, create=True) -> Optional[UserAddr]:
-        addr: Addr = Addr.get(db, address, create=create)
+    def get(db: DB, user, address: str, create: Union[bool, str] = True) -> Optional[UserAddr]:
+        addr: Addr = Addr.get(db, address, create=bool(create))
 
         if addr is None:
             return None

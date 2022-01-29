@@ -207,6 +207,7 @@ class UserAddrBase(BaseModel):
     addr_pk: int
     date_create: datetime
     date_update: Optional[datetime]
+    name: str
     block_t: Optional[datetime]
     block_c: int
     token_l: List[str]
@@ -236,6 +237,7 @@ class UserAddr(UserAddrBase):
 
 class UserAddrAdd(BaseModel):
     address: str
+    name: Optional[str]
 
 
 class UserAddrTokenAdd(BaseModel):

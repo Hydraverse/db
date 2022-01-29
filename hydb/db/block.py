@@ -22,7 +22,7 @@ class LocalState:
     # Testnet blocks:
     # 160387 (160388 is HYDRA SC TX + minting two tokens to sender)
     # 160544 (160545 is HYDRA TX)
-    height = 160387
+    height = 0
     hash = ""
 
 

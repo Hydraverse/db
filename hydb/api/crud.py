@@ -55,7 +55,7 @@ def user_addr_add(db: DB, user: models.User, addr_add: schemas.UserAddrAdd) -> m
     return user.addr_get(
         db=db,
         address=addr_add.address,
-        create=True
+        create=addr_add.name or True
     )
 
 
