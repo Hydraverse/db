@@ -149,9 +149,12 @@ class Addr(AddrBase):
 
 class UserUniq(BaseModel):
     pkid: int
+    date_create: datetime
+    date_update: Optional[datetime]
+    time_create: int
+    name_weight: int
     name: str
-    time: int
-    nano: int
+    hyve_addr_hy: str
 
     class Config:
         orm_mode = True
