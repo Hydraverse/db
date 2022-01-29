@@ -26,6 +26,8 @@ class User(Base):
 
     tg_user_id = Column(Integer, nullable=False, unique=True, primary_key=False, index=True)
 
+    block_c = Column(Integer, nullable=False, server_default="0")
+
     info = DbInfoColumn()
     data = DbDataColumn()
 
