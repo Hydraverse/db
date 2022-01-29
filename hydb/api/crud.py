@@ -88,16 +88,6 @@ def user_addr_token_del(db: DB, user_addr: models.UserAddr, address: str) -> sch
     )
 
 
-def user_addr_hist_del(db: DB, user_addr: models.UserAddr, user_addr_hist_pk: int) -> schemas.DeleteResult:
-    # noinspection PyArgumentList
-    return schemas.DeleteResult(
-        deleted=user_addr.addr_hist_del(
-            db=db,
-            user_addr_hist_pk=user_addr_hist_pk
-        )
-    )
-
-
 def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
     return db.Session.query(
         models.Block

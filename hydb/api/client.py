@@ -121,7 +121,7 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_get(self, user: schemas.UserBase, address: str) -> Optional[schemas.UserAddr]:
+    def user_addr_get(self, user: schemas.UserBase, address: str) -> Optional[schemas.UserAddrFull]:
         result = self.get(
             f"/u/{user.uniq.pkid}/a/{address}",
         )
@@ -158,14 +158,6 @@ class HyDbClient(BaseRPC):
         return schemas.DeleteResult(
             **self.post(
                 f"/u/{user_addr.user_pk}/a/{user_addr.pkid}/t/{address}",
-                request_type="delete",
-            )
-        )
-
-    def user_addr_hist_del(self, user: schemas.UserBase, user_addr_hist: schemas.UserAddrHistBase) -> schemas.DeleteResult:
-        return schemas.DeleteResult(
-            **self.post(
-                f"/u/{user.uniq.pkid}/a/{user_addr_hist.user_addr_pk}/h/{user_addr_hist.pkid}",
                 request_type="delete",
             )
         )

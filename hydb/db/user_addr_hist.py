@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import List
 
-from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime
+from sqlalchemy import Column, ForeignKey, Integer, and_, DateTime, Boolean
 from sqlalchemy.orm import relationship
 
 from .base import *

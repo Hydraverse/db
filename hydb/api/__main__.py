@@ -114,7 +114,7 @@ def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB
     )
 
 
-@app.get("/u/{user_pk}/a/{address}", response_model=schemas.UserAddr)
+@app.get("/u/{user_pk}/a/{address}", response_model=schemas.UserAddrFull)
 def user_addr_get(user_pk: int, address: str, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
@@ -176,24 +176,6 @@ def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = 
         raise HTTPException(status_code=404, detail="UserAddr not found.")
 
     return crud.user_addr_token_del(db=db, user_addr=user_addr, address=address)
-
-
-@app.delete("/u/{user_pk}/a/{user_addr_pk}/h/{user_addr_hist_pk}", response_model=schemas.DeleteResult)
-def user_addr_hist_del(user_pk: int, user_addr_pk: int, user_addr_hist_pk: int, db: DB = Depends(dbase.yield_with_session)):
-    user_addr: models.UserAddr = db.Session.query(
-        models.UserAddr
-    ).where(
-        and_(
-            models.UserAddr.user_pk == user_pk,
-            models.UserAddr.pkid == user_addr_pk,
-        )
-    ).one_or_none()
-
-    if user_addr is None:
-        raise HTTPException(status_code=404, detail="UserAddr not found.")
-
-    return crud.user_addr_hist_del(db=db, user_addr=user_addr, user_addr_hist_pk=user_addr_hist_pk)
-
 
 
 # Use as template for Addrs.

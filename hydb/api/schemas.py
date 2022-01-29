@@ -226,13 +226,18 @@ class UserAddrBase(BaseModel):
 class UserAddr(UserAddrBase):
     addr: Addr
 
-    user_addr_hist: List[UserAddrHist]
-
     class Config:
         orm_mode = True
 
     def filter_addr_token_balances(self):
         return self.filter_info_token_balances(self.addr.info)
+
+
+class UserAddrFull(UserAddr):
+    user_addr_hist: List[UserAddrHistBase]
+
+    class Config:
+        orm_mode = True
 
 
 class UserAddrAdd(BaseModel):

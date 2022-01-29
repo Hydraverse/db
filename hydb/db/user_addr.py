@@ -94,7 +94,6 @@ class UserAddr(Base):
         for uah in self.user_addr_hist:
             if uah.pkid == user_addr_hist_pk:
                 uah._remove(db, self.user_addr_hist)
-                db.Session.commit()
                 return True
 
         return False
