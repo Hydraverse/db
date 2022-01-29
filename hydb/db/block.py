@@ -104,23 +104,28 @@ class Block(Base):
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
-    def update_confirmations(self, db: DB):
+    def update_confirmations(self, db: DB) -> bool:
         confirmations = self.conf
+        updated = False
 
         if confirmations < Block.CONF_MATURE:
 
-            conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
+            try:
+                conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
+            except BaseRPC.Exception as exc:
+                log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
+                return False
+
+            if self.conf != conf:
+                self.conf = conf
+                db.Session.add(self)
+                updated = True
 
             if conf >= Block.CONF_MATURE:
-                self.conf = conf
 
                 if len(self.addr_hist):
                     for addr_hist in self.addr_hist:
-                        addr_hist.on_block_mature()
-
-                    db.Session.add(self)
-                    db.Session.commit()
-
+                        addr_hist.on_block_mature(db)
                     try:
                         db.api.sse_block_notify_mature(block_pk=self.pkid)
                     except BaseRPC.Exception as exc:
@@ -133,7 +138,9 @@ class Block(Base):
                     #
                     log.warning(f"Deleting matured block at height {self.height} with no history.")
                     db.Session.delete(self)
-                    db.Session.commit()
+                    updated = True
+
+        return updated
 
     @staticmethod
     def update_confirmations_all(db: DB):
@@ -147,8 +154,13 @@ class Block(Base):
             Block.conf < Block.CONF_MATURE
         ).all()
 
+        updated = False
+
         for block in blocks:
-            block.update_confirmations(db)
+            updated |= block.update_confirmations(db)
+
+        if updated:
+            db.Session.commit()
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
