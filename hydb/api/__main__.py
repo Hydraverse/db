@@ -2,6 +2,8 @@ from fastapi import FastAPI, Depends, HTTPException, APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy import and_
 
+from hydra import log
+
 from ..db import DB
 
 from .crud import models, schemas
@@ -10,6 +12,8 @@ from . import events
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
+
+log.log_set(log.INFO)
 
 
 @app.get("/")
