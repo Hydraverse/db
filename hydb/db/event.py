@@ -23,7 +23,7 @@ class Event(Base):
 
     pkid = DbPkidColumn(seq="event_seq")
     date_create = DbDateCreateColumn()
-    date_expire = Column(DateTime, nullable=False, default=lambda: datetime.utcnow() + timedelta(hours=18))
+    date_expire = Column(DateTime, nullable=False, default=lambda: datetime.now() + timedelta(hours=18))
     claim = DbInfoColumn(default=[])
     event = Column(String, nullable=False)
     data = Column(Text, nullable=False)
