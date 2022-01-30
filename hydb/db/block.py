@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import asyncio
 import time
-from asyncio import CancelledError
 from typing import Optional, List
 
+import sqlalchemy.orm.exc
 from hydra import log
 from hydra.rpc import BaseRPC
 from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select, asc
@@ -166,29 +166,39 @@ class Block(Base):
     def update_confirmations_all(db: DB):
         """Update confirmations on stored blocks.
         """
-        blocks: List[Block] = db.Session.query(
-            Block
-        ).order_by(
-            asc(Block.height)
-        ).all()
+        while 1:
+            blocks: List[Block] = db.Session.query(
+                Block
+            ).order_by(
+                asc(Block.height)
+            ).all()
 
-        updated = []
+            try:
+                updated = []
 
-        for block in blocks:
-            if block.update_confirmations(db):
-                updated.append(block)
+                for block in blocks:
+                    if block.update_confirmations(db):
+                        updated.append(block)
 
-        if len(updated):
-            db.Session.commit()
+                if len(updated):
+                    db.Session.commit()
 
-            deleted = False
+                    deleted = False
 
-            for block in updated:
-                db.Session.refresh(block)
-                deleted |= block.update_confirmations_post_commit(db)
+                    for block in updated:
+                        db.Session.refresh(block)
+                        deleted |= block.update_confirmations_post_commit(db)
 
-            if deleted:
-                db.Session.commit()
+                    if deleted:
+                        db.Session.commit()
+
+                break
+
+            except sqlalchemy.exc.SQLAlchemyError as exc:
+                log.error(
+                    f"Block.update_confirmations_all(): Got SQL error '{exc}', trying again.", exc_info=exc)
+                db.Session.rollback()
+                continue
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
@@ -208,31 +218,47 @@ class Block(Base):
 
     @staticmethod
     def make(db: DB, height: int) -> Optional[Block]:
-        bhash = db.rpc.getblockhash(height)
-
-        # noinspection PyArgumentList
-        new_block: Block = Block(
-            height=height,
-            hash=bhash,
-        )
-
-        if new_block.on_new_block(db):
-            db.Session.add(new_block)
-            db.Session.commit()
-            db.Session.refresh(new_block)
-            log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
-
+        while 1:
             try:
-                db.api.sse_block_notify_create(block_pk=new_block.pkid)
+                bhash = db.rpc.getblockhash(height)
+
+                # noinspection PyArgumentList
+                new_block: Block = Block(
+                    height=height,
+                    hash=bhash,
+                )
+
+                if new_block.on_new_block(db):
+                    db.Session.add(new_block)
+                    db.Session.commit()
+                    db.Session.refresh(new_block)
+                    log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
+
+                    try:
+                        db.api.sse_block_notify_create(block_pk=new_block.pkid)
+                    except BaseRPC.Exception as exc:
+                        log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
+                    else:
+                        log.info(f"Sent notification for new block #{new_block.pkid}")
+
+                    return new_block
+
+            except sqlalchemy.orm.exc.StaleDataError as exc:
+                log.error("Block.make(): Got StaleDataError when attempting to create new block, trying again.", exc_info=exc)
+                db.Session.rollback()
+                continue
+            except sqlalchemy.exc.SQLAlchemyError as exc:
+                log.error(f"Block.make(): Got SQL error {exc}, trying again.", exc_info=exc)
+                db.Session.rollback()
+                continue
             except BaseRPC.Exception as exc:
-                log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
-            else:
-                log.info(f"Sent notification for new block #{new_block.pkid}")
+                log.error("Block.make(): RPC error, trying again.", exc_info=exc)
+                db.Session.rollback()
+                continue
 
-            return new_block
-
-        log.debug(f"Discarding block without history entries at height {new_block.height}")
-        db.Session.rollback()
+            log.debug(f"Discarding block without history entries at height {new_block.height}")
+            db.Session.rollback()
+            break
 
     @staticmethod
     def update_task(db: DB) -> None:
