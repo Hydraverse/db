@@ -132,9 +132,46 @@ class Block(Base):
             return False
 
         if self.conf != conf:
-            self.conf = conf
-            db.Session.add(self)
-            return True
+
+            while 1:
+                try:
+                    self.conf = conf
+                    db.Session.add(self)
+                    db.Session.commit()
+
+                    break
+
+                except sqlalchemy.exc.SQLAlchemyError as exc:
+                    log.error(
+                        f"Block.update_confirmations(): Got SQL error '{exc}', trying again.", exc_info=exc
+                    )
+
+                    db.Session.rollback()
+
+                    try:
+                        db.Session.refresh(self)
+                        continue
+                    except sqlalchemy.exc.SQLAlchemyError as exc:
+                        log.error(
+                            f"Block.update_confirmations(refresh): Got SQL error '{exc}', not trying again.", exc_info=exc
+                        )
+
+                        return False
+
+            try:
+                if self.update_confirmations_post_commit(db):
+                    db.Session.commit()
+
+            except sqlalchemy.exc.SQLAlchemyError as exc:
+                log.error(
+                    f"Block.update_confirmations(post-commit): Got SQL error '{exc}', not trying again.", exc_info=exc
+                )
+
+            # Use new behavior of commiting and error-checking per-block while
+            # maintaining the same behavior and expectatons of the calling function.
+            return False
+
+        return False
 
     def update_confirmations_post_commit(self, db: DB) -> bool:
         """Called after bulk commit when update_confirmations() returned True.
@@ -196,7 +233,9 @@ class Block(Base):
 
             except sqlalchemy.exc.SQLAlchemyError as exc:
                 log.error(
-                    f"Block.update_confirmations_all(): Got SQL error '{exc}', trying again.", exc_info=exc)
+                    f"Block.update_confirmations_all(): Got SQL error '{exc}', trying again.", exc_info=exc
+                )
+
                 db.Session.rollback()
                 continue
 
