@@ -44,6 +44,7 @@ class AddrHist(Base):
         self.info_new = self.addr.info
 
         db.Session.add(self)
+        db.Session.commit()
 
     def _removed_user(self, db: DB):
         if not len(self.addr_hist_user):
