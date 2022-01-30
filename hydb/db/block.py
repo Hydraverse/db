@@ -55,7 +55,27 @@ class Block(Base):
             db.Session.delete(self)
 
     def on_new_block(self, db: DB) -> bool:
-        info, txes = Block.__get_block_info(db, self.height, self.hash)
+        info, txes = None, None
+
+        while 1:
+            # noinspection PyBroadException
+            try:
+                info, txes = Block.__get_block_info(db, self.height, self.hash)
+                break
+            except BaseRPC.Exception as exc:
+                if exc.response.status_code == 404:
+                    # Block not in explorer yet, so wait for a little while.
+                    log.warning(f"Block #{self.height} not in explorer yet, trying again in 10s.")
+                    time.sleep(10)
+                    continue
+
+                log.critical(f"RPC error querying explorer API: {str(exc)}. (Retrying in 30s)", exc_info=exc)
+                time.sleep(30)
+                continue
+            except BaseException as exc:
+                log.critical(f"Error querying explorer API: {str(exc)}. (Retrying in 60s)", exc_info=exc)
+                time.sleep(60)
+                continue
 
         addresses_hy = set()
         addresses_hx = set()
@@ -150,8 +170,6 @@ class Block(Base):
             Block
         ).order_by(
             asc(Block.height)
-        ).filter(
-            Block.conf > 1
         ).all()
 
         updated = []
