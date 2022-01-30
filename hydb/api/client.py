@@ -5,8 +5,10 @@ import sseclient
 from sseclient import SSEClient
 
 from hydra.rpc.base import BaseRPC
-from ..util.conf import Config, AttrDict
-from . import events, schemas
+from hydb.util.conf import Config, AttrDict
+from hydb.event import Events
+
+from . import schemas
 
 
 @Config.defaults
@@ -60,19 +62,19 @@ class HyDbClient(BaseRPC):
             response_factory=lambda rsp: None
         )
 
-    def sse_block_get(self) -> schemas.BlockSSEResult:
-        sse_client = self._sse_client(path="/sse/block")
+    def sse_block_next(self) -> schemas.BlockSSEResult:
+        sse_client = self._sse_client(path="/sse/block/next")
 
         try:
-            for block_sse_result in events.yield_block_events(sse_client):
+            for block_sse_result in Events.yield_block_events(sse_client):
                 return block_sse_result
         finally:
             sse_client.close()
 
     def sse_block(self, callback_fn: Callable[[schemas.BlockSSEResult], None]):
         def callback(event: sseclient.Event):
-            if events.event_is_block(event):
-                block_sse_result = events.block_event_decode(event)
+            if Events.event_is_block(event):
+                block_sse_result = Events.block_event_decode(event)
                 return callback_fn(block_sse_result)
 
         return self._sse_get(
@@ -82,8 +84,8 @@ class HyDbClient(BaseRPC):
 
     async def sse_block_async(self, callback_fn: Callable, loop: asyncio.AbstractEventLoop):
         def callback(event: sseclient.Event):
-            if events.event_is_block(event):
-                block_sse_result = events.block_event_decode(event)
+            if Events.event_is_block(event):
+                block_sse_result = Events.block_event_decode(event)
                 loop.create_task(callback_fn(block_sse_result))
 
         return await self.asyncc._sse_get(

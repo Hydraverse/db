@@ -6,9 +6,10 @@ from hydra import log
 
 from ..db import DB
 
+from hydb.event.events import EventManager
+
 from .crud import models, schemas
 from . import crud
-from . import events
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
@@ -42,18 +43,29 @@ def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Dep
         # Should not be allowed to happen per schema.
         raise HTTPException(status_code=500, detail=f"Unknown block event '{block_ev}'.")
 
-    block_sse_result: schemas.BlockSSEResult = crud.block_sse_result(
-        db=db,
-        block=block,
-        event=block_ev
-    )
+    ev: models.Event = crud.block_sse_event_add(db=db, block=block, event=block_ev)
 
-    events.block_event_notify(block_sse_result)
+    log.info(f"Event #{ev.pkid} added for block #{block.height}")
 
 
 @app.router.get('/sse/block')
-async def sse_block(request: Request):
-    event_generator = events.block_event_generator(request)
+async def sse_block(request: Request, db: DB = Depends(dbase.yield_with_session)):
+    event_generator = EventManager.block_event_generator(
+        db=db,
+        request=request
+    )
+
+    return EventSourceResponse(event_generator)
+
+
+@app.router.get('/sse/block/next')
+async def sse_block_next(request: Request, db: DB = Depends(dbase.yield_with_session)):
+    event_generator = EventManager.block_event_generator(
+        db=db,
+        request=request,
+        limit=1
+    )
+
     return EventSourceResponse(event_generator)
 
 

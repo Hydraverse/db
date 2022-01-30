@@ -105,42 +105,42 @@ class Block(Base):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
     def update_confirmations(self, db: DB) -> bool:
-        confirmations = self.conf
-        updated = False
+        try:
+            conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
+        except BaseRPC.Exception as exc:
+            log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
+            return False
 
-        if confirmations < Block.CONF_MATURE:
+        if self.conf != conf:
+            self.conf = conf
+            db.Session.add(self)
+            return True
 
-            try:
-                conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
-            except BaseRPC.Exception as exc:
-                log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
-                return False
+    def update_confirmations_post_commit(self, db: DB) -> bool:
+        """Called after bulk commit when update_confirmations() returned True.
+        """
+        if self.conf < Block.CONF_MATURE:
+            return False
 
-            if self.conf != conf:
-                self.conf = conf
-                db.Session.add(self)
-                updated = True
+        if self.conf > Block.CONF_MATURE or not len(self.addr_hist):
+            log.info(f"Delete over-matured block #{self.pkid} with {self.conf} confirmations.")
+            db.Session.delete(self)
+            return True
 
-            if conf >= Block.CONF_MATURE:
+        if self.conf == Block.CONF_MATURE:  # Decision: Only process when timing is right, to enable self deletion.
 
-                if len(self.addr_hist):
-                    for addr_hist in self.addr_hist:
-                        addr_hist.on_block_mature(db)
-                    try:
-                        db.api.sse_block_notify_mature(block_pk=self.pkid)
-                    except BaseRPC.Exception as exc:
-                        log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
-                    else:
-                        log.info(f"Sent notification for matured block #{self.pkid}")
+            if len(self.addr_hist):
+                for addr_hist in self.addr_hist:
+                    addr_hist.on_block_mature(db)
+
+                try:
+                    db.api.sse_block_notify_mature(block_pk=self.pkid)
+                except BaseRPC.Exception as exc:
+                    log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
                 else:
-                    # This condition is currently not possible due to cascading deletes,
-                    #  only because AddrHist.on_block_mature() never deletes (only happens post notify).
-                    #
-                    log.warning(f"Deleting matured block at height {self.height} with no history.")
-                    db.Session.delete(self)
-                    updated = True
+                    log.info(f"Sent notification for matured block #{self.pkid}")
 
-        return updated
+        return False
 
     @staticmethod
     def update_confirmations_all(db: DB):
@@ -151,16 +151,26 @@ class Block(Base):
         ).order_by(
             asc(Block.height)
         ).filter(
-            Block.conf < Block.CONF_MATURE
+            Block.conf > 1
         ).all()
 
-        updated = False
+        updated = []
 
         for block in blocks:
-            updated |= block.update_confirmations(db)
+            if block.update_confirmations(db):
+                updated.append(block)
 
-        if updated:
+        if len(updated):
             db.Session.commit()
+
+            deleted = False
+
+            for block in updated:
+                db.Session.refresh(block)
+                deleted |= block.update_confirmations_post_commit(db)
+
+            if deleted:
+                db.Session.commit()
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
@@ -211,10 +221,12 @@ class Block(Base):
         try:
             Block.__update_init(db)
 
+            Block.update_confirmations_all(db)
+
             while 1:
-                Block.update_confirmations_all(db)
-                Block.update(db)
-                time.sleep(15)
+                if Block.update(db):
+                    Block.update_confirmations_all(db)
+                time.sleep(1)
 
         except KeyboardInterrupt:
             pass
@@ -235,7 +247,7 @@ class Block(Base):
                 LocalState.height = db.rpc.getblockcount() - 1
 
     @staticmethod
-    def update(db: DB) -> None:
+    def update(db: DB) -> bool:
 
         chain_height = db.rpc.getblockcount()
         chain_hash = db.rpc.getblockhash(chain_height)
@@ -246,13 +258,15 @@ class Block(Base):
             if LocalState.hash and chain_hash != LocalState.hash:
                 log.warning(f"Fork detected at height {chain_height}: {chain_hash} != {LocalState.hash}")
             else:
-                return
+                return False
 
         for height in range(LocalState.height + 1, chain_height + 1):
             Block.make(db, height)
 
         LocalState.height = chain_height
         LocalState.hash = chain_hash
+
+        return True
 
     @staticmethod
     def __get_block_info(db: DB, block_height: int, block_hash: str):

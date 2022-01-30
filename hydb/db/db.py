@@ -15,15 +15,15 @@ from hydra.rpc import HydraRPC, ExplorerRPC
 from hydra import log
 
 from hydb.util.conf import Config
-from hydb.api.client import HyDbClient
 
 
 @Config.defaults
 class DB:
+    _ = None
     engine = None
     Session: scoped_session
     rpc: HydraRPC
-    api: HyDbClient
+    api = None  # type: HyDbClient
     url: str
     wallet: str
     passphrase: str
@@ -98,7 +98,10 @@ class DB:
 
         self.rpc = HydraRPC(url=conf_rpc.url)
         self.rpcx = ExplorerRPC(mainnet=self.rpc.mainnet)
+
+        from hydb.api.client import HyDbClient
         self.api = HyDbClient()
+
         self.__init_wallet()
 
     def __repr__(self):
@@ -126,6 +129,10 @@ class DB:
                     log.warning(f"Wallet encrypted, unlocking...")
                     self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
                     log.warning(f"Wallet unlocked.")
+            else:
+                log.info(f"Unlocking wallet '{self.wallet}'...")
+                self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
+                log.info(f"Wallet unlocked.")
 
     class WithSession:
         db: DB
@@ -135,10 +142,16 @@ class DB:
 
         def __enter__(self):
             self.db.Session()
+            DB._ = self.db
             return self.db
 
         def __exit__(self, exc_type, exc_val, exc_tb):
+            DB._ = None
             self.db.Session.remove()
+
+    @staticmethod
+    def current_session() -> scoped_session:
+        return DB._.Session if DB._ is not None else None
 
     def with_session(self):
         return DB.WithSession(self)
@@ -171,11 +184,14 @@ from hydb.db.addr import __all__ as __addr_all__
 from hydb.db.addr import *
 from hydb.db.user import __all__ as __user_all__
 from hydb.db.user import *
+from hydb.db.event import __all__ as __event_all__
+from hydb.db.event import *
 
 __all__ = (
     ("DB",) +
     __base_all__ +
     __user_all__ +
     __addr_all__ +
-    __block_all__
+    __block_all__ +
+    __event_all__
 )

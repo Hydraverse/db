@@ -1,3 +1,4 @@
+import json
 from typing import Optional
 
 from hydb.db import DB
@@ -96,9 +97,29 @@ def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
     ).one_or_none()
 
 
+def sse_event_add(db: DB, event: str, data: schemas.BaseModel) -> models.Event:
+    ev = models.Event(
+        event=event,
+        data=data.json(encoder=str)
+    )
+
+    db.Session.add(ev)
+    db.Session.commit()
+    db.Session.refresh(ev)
+    return ev
+
+
 def block_sse_result(db: DB, block: models.Block, event: schemas.SSEBlockEvent) -> schemas.BlockSSEResult:
     return schemas.BlockSSEResult(
         event=event,
         block=block,
         hist=models.AddrHist.all_for_block(db, block)
+    )
+
+
+def block_sse_event_add(db: DB, block: models.Block, event: schemas.SSEBlockEvent) -> models.Event:
+    return sse_event_add(
+        db=db,
+        event="block",
+        data=block_sse_result(db, block, event)
     )

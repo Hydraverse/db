@@ -46,6 +46,7 @@ class HyDb(HydraApp):
         from hydra.rpc.base import BaseRPC
         from hydb import db as models
         from hydb.api.client import schemas
+        from sqlalchemy import func, exists, and_, not_, or_, all_, any_, except_
         db = self.db
         api = db.api
         rpc = db.rpc
