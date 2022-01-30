@@ -1,6 +1,5 @@
-import enum
 from asyncio import Semaphore
-from typing import Optional
+from typing import Optional, List
 
 from fastapi import Request
 
@@ -39,12 +38,10 @@ class EventManager:
         async def wait(self):
             await self.sem.acquire()
 
-        async def next(self) -> Optional[schemas.BlockSSEResult]:
-            results = await self.db.in_session_async(self.__load_block_events)
+        async def next(self, limit: Optional[int] = None) -> List[schemas.BlockSSEResult]:
+            return await self.db.in_session_async(self.__load_block_events, limit)
 
-            return results[0] if len(results) else None
-
-        def __load_block_events(self):
+        def __load_block_events(self, limit: Optional[int]):
             return [
                 Events.block_event_decode(event.data)
                 for event in
@@ -52,7 +49,7 @@ class EventManager:
                     db=self.db,
                     event=Events.EventType.BLOCK,
                     claimant=self.claimant,
-                    limit=1
+                    limit=limit
                 )
             ]
 
@@ -68,11 +65,9 @@ class EventManager:
 
                 await block_loader.wait()
 
-                while 1:
-                    block_sse_result = await block_loader.next()
+                block_sse_results = await block_loader.next(limit=limit)
 
-                    if block_sse_result is None:
-                        break
+                for block_sse_result in block_sse_results:
 
                     yield {
                         "event": Events.EventType.BLOCK,
