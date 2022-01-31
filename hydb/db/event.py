@@ -109,7 +109,8 @@ class Event(Base):
 
         if deleted:
             log.info(f"Deleted {deleted} expired events.")
-            session.commit()
+            # Causes later error "This transaction is closed":
+            # session.commit()
 
 
 @sa_event.listens_for(Event, 'after_insert')
