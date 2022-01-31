@@ -1,6 +1,8 @@
 import json
 from typing import Optional
 
+from sqlalchemy import func
+
 from hydb.db import DB
 from hydb import db as models
 from . import schemas
@@ -131,6 +133,7 @@ def sse_event_add(db: DB, event: str, data: schemas.BaseModel) -> models.Event:
 
 def block_sse_result(db: DB, block: models.Block, event: schemas.SSEBlockEvent) -> schemas.BlockSSEResult:
     return schemas.BlockSSEResult(
+        id=db.Session.query(func.max(models.Event.pkid)).scalar() + 1,  # Best guess, but monoticity is all we really need here.
         event=event,
         block=block,
         hist=models.AddrHist.all_for_block(db, block)

@@ -36,8 +36,11 @@ class Events:
 
     @staticmethod
     def yield_block_events(sse_client: sseclient.SSEClient) -> Iterable[schemas.BlockSSEResult]:
-        return map(
-            Events.block_event_decode,
-            Events.filter_block_events(sse_client)
+        return sorted(
+            map(
+                Events.block_event_decode,
+                Events.filter_block_events(sse_client)
+            ),
+            key=lambda be: be.id
         )
 

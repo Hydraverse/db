@@ -4,6 +4,7 @@ from typing import Optional, List
 from fastapi import Request
 
 from hydra import log
+from sse_starlette import ServerSentEvent
 
 from hydb.db import DB
 import hydb.db as models
@@ -69,11 +70,12 @@ class EventManager:
 
                 for block_sse_result in block_sse_results:
 
-                    yield {
-                        "event": Events.EventType.BLOCK,
-                        "retry": 30000,
-                        "data": block_sse_result.json(encoder=str)
-                    }
+                    yield ServerSentEvent(
+                        id=block_sse_result.id,
+                        event=Events.EventType.BLOCK,
+                        retry=30000,
+                        data=block_sse_result.json(encoder=str)
+                    )
 
                     sent += 1
 

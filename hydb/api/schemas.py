@@ -400,6 +400,7 @@ class SSEBlockEvent(str, enum.Enum):
 
 
 class BlockSSEResult(BaseModel):
+    id: int
     event: SSEBlockEvent
     block: Block
     hist: List[AddrHistResult]
