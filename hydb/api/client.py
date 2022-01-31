@@ -140,10 +140,19 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_del(self, user: schemas.UserBase, user_addr: schemas.UserAddrBase) -> schemas.DeleteResult:
+    def user_addr_upd(self, user_addr: schemas.UserAddrBase, addr_update: schemas.UserAddrUpdate) -> schemas.UserAddrUpdate.Result:
+        return schemas.UserAddrUpdate.Result(
+            **self.post(
+                f"/u/{user_addr.user_pk}/a/{user_addr.pkid}",
+                request_type="patch",
+                **addr_update.dict()
+            )
+        )
+
+    def user_addr_del(self, user_addr: schemas.UserAddrBase) -> schemas.DeleteResult:
         return schemas.DeleteResult(
             **self.post(
-                f"/u/{user.uniq.pkid}/a/{user_addr.pkid}",
+                f"/u/{user_addr.user_pk}/a/{user_addr.pkid}",
                 request_type="delete",
             )
         )

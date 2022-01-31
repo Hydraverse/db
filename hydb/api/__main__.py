@@ -146,6 +146,27 @@ def user_addr_add(user_pk: int, addr_add: schemas.UserAddrAdd, db: DB = Depends(
     return crud.user_addr_add(db=db, user=db_user, addr_add=addr_add)
 
 
+@app.patch("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.UserAddrUpdate.Result)
+def user_addr_upd(user_pk: int, user_addr_pk: int, user_addr_update: schemas.UserAddrUpdate, db: DB = Depends(dbase.yield_with_session)):
+    user_addr: models.UserAddr = db.Session.query(
+        models.UserAddr
+    ).where(
+        and_(
+            models.UserAddr.user_pk == user_pk,
+            models.UserAddr.pkid == user_addr_pk,
+            )
+    ).one_or_none()
+
+    if user_addr is None:
+        raise HTTPException(status_code=404, detail="UserAddr not found.")
+
+    return crud.user_addr_update(
+        db=db,
+        user_addr=user_addr,
+        addr_update=user_addr_update
+    )
+
+
 @app.delete("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.DeleteResult)
 def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_pkid(db, user_pk)

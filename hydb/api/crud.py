@@ -60,6 +60,26 @@ def user_addr_add(db: DB, user: models.User, addr_add: schemas.UserAddrAdd) -> m
     )
 
 
+def user_addr_update(db: DB, user_addr: models.UserAddr, addr_update: schemas.UserAddrUpdate) -> schemas.UserAddrUpdate.Result:
+    updated = False
+
+    if addr_update.name is not None and schemas.UserAddrUpdate.validate_name(addr_update.name) \
+            and user_addr.user.addr_name_available(addr_update.name):
+        user_addr.name = addr_update.name
+        updated = True
+
+    # if addr_update.data is not None:
+    #     if addr_update.over is True:
+
+    if updated:
+        db.Session.add(user_addr)
+        db.Session.commit()
+
+    return schemas.UserAddrUpdate.Result(
+        updated=updated
+    )
+
+
 def user_addr_del(db: DB, user: models.User, user_addr_pk: int) -> schemas.DeleteResult:
     # noinspection PyArgumentList
     return schemas.DeleteResult(

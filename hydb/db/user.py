@@ -112,6 +112,9 @@ class User(Base):
         db.Session.delete(self)
         db.Session.commit()
 
+    def addr_name_available(self, name: str) -> bool:
+        return name not in [ua.name for ua in self.user_addrs]
+
     def update_info(self, db: DB, update: schemas.UserInfoUpdate) -> schemas.UserInfoUpdate.Result:
         changed = False
 

@@ -1,10 +1,44 @@
-from datetime import datetime
+import decimal
+import string
+from datetime import datetime, timedelta
 import enum
-from typing import Optional, List, Generic, TypeVar, Dict
+from decimal import Decimal
+from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequence
 
 from attrdict import AttrDict
 from pydantic import BaseModel, root_validator
 from pydantic.generics import GenericModel
+
+_DecimalNew = Union[Decimal, float, str, Tuple[int, Sequence[int], int]]
+
+
+def timedelta_str(td: timedelta) -> str:
+    td_msg = AttrDict()
+
+    if td.days > 0:
+        td_msg.days = str(td.days) + "d"
+
+    seconds = td.seconds
+
+    if seconds >= 3600:
+        hours = seconds // 3600
+        seconds -= hours * 3600
+        td_msg.hours = str(hours) + "h"
+
+    if seconds >= 60:
+        minutes = seconds // 60
+        seconds -= minutes * 60
+        td_msg.minutes = str(minutes) + "m"
+
+    if not len(td_msg):
+        td_msg.seconds = str(seconds) + "s"
+
+    return (
+            td_msg.get('days', '') +
+            td_msg.get('hours', '') +
+            td_msg.get('minutes', '') +
+            td_msg.get('seconds', '')
+    )
 
 
 class ServerInfo(BaseModel):
@@ -139,6 +173,42 @@ class AddrBase(BaseModel):
         addr_match = lambda addrs: self.addr_hx in addrs or self.addr_hy in addrs
         return filter(lambda tx: addr_match(list(Block.tx_yield_addrs(tx))), block.tx)
 
+    @staticmethod
+    def soft_validate(address: str, testnet: Optional[bool] = None) -> Optional[Type]:
+        length = len(address)
+
+        if not address.isalnum():
+            return None
+
+        base = (
+            36 if length == 34 else
+            16 if length == 40 else
+            None
+        )
+
+        if base is None:
+            return None
+
+        try:
+            int(address, base)
+        except ValueError:
+            return None
+
+        if base == 36:
+            if testnet is True  and address[0].lower() != 't' or \
+               testnet is False and address[0].lower() != 'h':
+                return None
+
+        return (
+            Addr.Type.H if length == 34 else
+            Addr.Type.S
+        )
+
+    @staticmethod
+    def decimal(value: _DecimalNew, decimals: int = 8, prec: int = 16) -> Decimal:
+        decimal.getcontext().prec = prec
+        return Decimal(value) / Decimal(10**decimals)
+
 
 class Addr(AddrBase):
     info: AttrDict
@@ -243,6 +313,30 @@ class UserAddrFull(UserAddr):
 class UserAddrAdd(BaseModel):
     address: str
     name: Optional[str]
+
+
+class UserAddrUpdate(BaseModel):
+    name: Optional[str]
+    # data: Optional[AttrDict]
+    # over: Optional[bool]
+
+    class Result(BaseModel):
+        updated: bool
+
+    @staticmethod
+    def validate_name(name: str):
+        return (
+            len(name) >= 5 and
+            not len(
+                [
+                    c
+                    for c in name
+                    if (c.isspace() and c != " ")
+                    or not c.isprintable()
+                    or c in string.punctuation
+                ]
+            )
+        )
 
 
 class UserAddrTokenAdd(BaseModel):
