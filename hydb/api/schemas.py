@@ -294,6 +294,21 @@ class UserAddrBase(BaseModel):
             + info.get("qrc721Balances", [])
         )
 
+    def likely_matches(self, address: str, addr: Optional[AddrBase] = None):
+        if addr is None:
+            if not isinstance(self, UserAddr):
+                raise TypeError("Must supply addr when calling UserAddrBase.likely_matches().")
+
+            addr = self.addr
+
+        addr_str = str(addr)
+
+        return (
+                addr_str == address or
+                self.name.lower().startswith(address.lower()) or
+                addr_str.startswith(address)
+        )
+
 
 class UserAddr(UserAddrBase):
     addr: Addr
@@ -361,6 +376,12 @@ class User(UserBase):
 
     class Config:
         orm_mode = True
+
+    def filter_likely_addr_matches(self, address: str):
+        return filter(
+            lambda ua: ua.likely_matches(address),
+            self.user_addrs
+        )
 
 
 class DeleteResult(BaseModel):
