@@ -31,6 +31,8 @@ class UserAddr(Base):
     block_t = Column(DateTime, nullable=True)
     block_c = Column(Integer, nullable=False, default=0)
     token_l = DbDataColumn(default=[])
+    info = DbInfoColumn()
+    data = DbDataColumn()
 
     user = relationship("User", back_populates="user_addrs")
     addr = relationship("Addr", back_populates="addr_users")

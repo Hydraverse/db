@@ -281,6 +281,8 @@ class UserAddrBase(BaseModel):
     block_t: Optional[datetime]
     block_c: int
     token_l: List[str]
+    info: AttrDict
+    data: Optional[AttrDict]
 
     class Config:
         orm_mode = True
