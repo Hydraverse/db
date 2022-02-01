@@ -42,6 +42,7 @@ setup(
             "sse-starlette",
             "uvicorn[standard]",
             "cryptography",
+            "deepdiff",
         ]
     },
     # entry_points={

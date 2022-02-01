@@ -2,10 +2,13 @@ from __future__ import annotations
 from typing import Optional, Union
 
 from attrdict import AttrDict
-from hydra import log
+from deepdiff import DeepDiff
+
 from sqlalchemy import Column, Integer
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship
+
+from hydra import log
 
 from .base import *
 from .db import DB
@@ -119,14 +122,14 @@ class User(Base):
         changed = False
 
         if update.over:
-            if self.info != update.info:
+            if DeepDiff(dict(self.info), dict(update.info)):
                 self.info = update.info
                 changed = True
         else:
-            info = AttrDict(self.info)
+            info = dict(self.info)
             info.update(update.info)
 
-            if self.info != info:
+            if DeepDiff(dict(self.info), info):
                 self.info = info
                 changed = True
 

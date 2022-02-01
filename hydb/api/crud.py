@@ -1,6 +1,7 @@
 import json
 from typing import Optional
 
+from deepdiff import DeepDiff
 from sqlalchemy import func
 
 from hydb.db import DB
@@ -70,21 +71,31 @@ def user_addr_update(db: DB, user_addr: models.UserAddr, addr_update: schemas.Us
         user_addr.name = addr_update.name
         updated = True
 
+    # noinspection DuplicatedCode
     if addr_update.info is not None:
         if addr_update.over is True:
             user_addr.info = addr_update.info
+            updated = True
         else:
-            user_addr.info.update(addr_update.info)
+            info = dict(user_addr.info)
+            info.update(addr_update.info)
 
-        updated = True
+            if DeepDiff(dict(user_addr.info), info):
+                user_addr.info = info
+                updated = True
 
+    # noinspection DuplicatedCode
     if addr_update.data is not None:
         if addr_update.over is True:
             user_addr.data = addr_update.data
+            updated = True
         else:
-            user_addr.data.update(addr_update.data)
+            data = dict(user_addr.data)
+            data.update(addr_update.data)
 
-        updated = True
+            if DeepDiff(dict(user_addr.data), data):
+                user_addr.data = data
+                updated = True
 
     if updated:
         db.Session.add(user_addr)

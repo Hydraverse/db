@@ -3,14 +3,16 @@ import enum
 from functools import lru_cache
 from typing import Optional, Tuple
 import binascii
-
 from attrdict import AttrDict
-from hydra import log
-from hydra.app.call import Call
-from hydra.rpc.hydra_rpc import BaseRPC
+from deepdiff import DeepDiff
+
 from sqlalchemy import Column, String, Enum, Integer
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
+
+from hydra import log
+from hydra.app.call import Call
+from hydra.rpc.hydra_rpc import BaseRPC
 
 from .base import *
 from .db import DB
@@ -128,7 +130,7 @@ class Addr(Base):
         for qrc721entry in info.get("qrc721Balances", []):
             qrc721entry["uris"] = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
-        if self.info != info:
+        if DeepDiff(dict(self.info), dict(info)):
             self.info = info
             db.Session.add(self)
             return True
