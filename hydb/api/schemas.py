@@ -319,8 +319,9 @@ class UserAddrAdd(BaseModel):
 
 class UserAddrUpdate(BaseModel):
     name: Optional[str]
-    # data: Optional[AttrDict]
-    # over: Optional[bool]
+    info: Optional[AttrDict]
+    data: Optional[AttrDict]
+    over: Optional[bool]
 
     class Result(BaseModel):
         updated: bool
