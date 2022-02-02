@@ -83,7 +83,7 @@ class Block(BaseModel):
         # .[inputs|outputs].address[Hex]
         #                  .receipt.[sender|contractAddressHex]
         #                          .logs.addressHex
-        # .contractSpends.[inputs|outputs].addressHex
+        # .contractSpends.[inputs|outputs].addressHex  <-- Duplicated in separate TX! Indicated by contractSpendSource from the second TX.
         # .qrc[20|721]TokenTransfers.[to|from|addressHex]
 
         for vio in (tx.get("inputs", []) + tx.get("outputs", [])):
@@ -110,13 +110,13 @@ class Block(BaseModel):
                     if "addressHex" in logi:
                         yield logi["addressHex"]
 
-        contract_spends = tx.get("contractSpends", {})
-
-        for contract_spend in contract_spends:
-            for cs_io in contract_spend.get("inputs", []) + contract_spend.get("outputs", []):
-                a = cs_io.get("addressHex", cs_io.get("address", ...))
-                if a is not ...:
-                    yield a
+        # contract_spends = tx.get("contractSpends", {})
+        #
+        # for contract_spend in contract_spends:
+        #     for cs_io in contract_spend.get("inputs", []) + contract_spend.get("outputs", []):
+        #         a = cs_io.get("addressHex", cs_io.get("address", ...))
+        #         if a is not ...:
+        #             yield a
 
         token_transfers = tx.get("qrc20TokenTransfers", []) + tx.get("qrc721TokenTransfers", [])
 
