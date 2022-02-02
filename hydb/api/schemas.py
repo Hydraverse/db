@@ -5,6 +5,7 @@ import enum
 from decimal import Decimal
 from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequence
 
+import pytz
 from attrdict import AttrDict
 from pydantic import BaseModel, root_validator
 from pydantic.generics import GenericModel
@@ -249,6 +250,12 @@ class UserBase(BaseModel):
 
     class Config:
         orm_mode = True
+
+    def user_time(self, dt: datetime):
+        tz_name = self.info.get("tz", "UTC")
+        tz_user = pytz.timezone(tz_name)
+
+        return pytz.utc.localize(dt, is_dst=None).astimezone(tz_user)
 
 
 class UserAddrHistBase(BaseModel):
