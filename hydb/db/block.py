@@ -180,7 +180,7 @@ class Block(Base):
             return False
 
         if self.conf > Block.CONF_MATURE or not len(self.addr_hist):
-            log.info(f"Delete over-matured block #{self.pkid} with {self.conf} confirmations.")
+            log.info(f"Delete over-mature block #{self.height} with {self.conf} confirmations.")
             db.Session.delete(self)
             return True
 
@@ -195,7 +195,7 @@ class Block(Base):
                 except BaseRPC.Exception as exc:
                     log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
                 else:
-                    log.info(f"Sent notification for matured block #{self.pkid}")
+                    log.debug(f"Sent notification for matured block #{self.pkid}")
 
         return False
 
@@ -271,14 +271,14 @@ class Block(Base):
                     db.Session.add(new_block)
                     db.Session.commit()
                     db.Session.refresh(new_block)
-                    log.info(f"Added block with {len(new_block.addr_hist)} history entries at height {new_block.height}")
+                    log.info(f"Processed block #{new_block.height}  hist:{len(new_block.addr_hist)}")
 
                     try:
                         db.api.sse_block_notify_create(block_pk=new_block.pkid)
                     except BaseRPC.Exception as exc:
                         log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
                     else:
-                        log.info(f"Sent notification for new block #{new_block.pkid}")
+                        log.debug(f"Sent notification for new block #{new_block.pkid}")
 
                     return new_block
 

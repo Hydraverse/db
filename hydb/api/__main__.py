@@ -45,7 +45,7 @@ def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Dep
 
     ev: models.Event = crud.block_sse_event_add(db=db, block=block, event=block_ev)
 
-    log.info(f"Event #{ev.pkid} added for block #{block.height}")
+    log.debug(f"Event #{ev.pkid} added for block #{block.height}")
 
 
 @app.router.get('/sse/block')
