@@ -130,7 +130,7 @@ class Addr(Base):
         for qrc721entry in info.get("qrc721Balances", []):
             qrc721entry["uris"] = self.nft_uris_from(db, qrc721entry["addressHex"], qrc721entry["count"])
 
-        if DeepDiff(dict(self.info), dict(info)):
+        if self.info is None or DeepDiff(dict(self.info), dict(info)):
             self.info = info
             db.Session.add(self)
             return True
