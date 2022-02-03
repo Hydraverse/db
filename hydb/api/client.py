@@ -86,7 +86,7 @@ class HyDbClient(BaseRPC):
         def callback(event: sseclient.Event):
             if Events.event_is_block(event):
                 block_sse_result = Events.block_event_decode(event)
-                loop.create_task(callback_fn(block_sse_result))
+                loop.run_until_complete(loop.create_task(callback_fn(block_sse_result)))
 
         return await self.asyncc._sse_get(
             path="/sse/block",
