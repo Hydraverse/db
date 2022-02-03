@@ -132,11 +132,14 @@ class HyDbClient(BaseRPC):
             **result
         )
 
-    def user_addr_add(self, user: schemas.UserBase, address: str) -> schemas.UserAddr:
+    def user_addr_add(self, user: schemas.UserBase, address: str, name: Optional[str] = None) -> schemas.UserAddr:
         return schemas.UserAddr(
             **self.post(
                 f"/u/{user.uniq.pkid}/a/",
-                **schemas.UserAddrAdd(address=address).dict(),
+                **schemas.UserAddrAdd(
+                    address=address,
+                    name=name
+                ).dict(),
             )
         )
 
