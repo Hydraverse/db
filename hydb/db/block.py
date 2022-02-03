@@ -367,6 +367,8 @@ class Block(Base):
             del info.hash
             del info.height
 
+            info.subsidy = int(db.rpc.getsubsidy())
+
             tx = []
 
             for txid in info.transactions:

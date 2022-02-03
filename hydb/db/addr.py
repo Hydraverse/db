@@ -12,7 +12,7 @@ from sqlalchemy.orm import relationship
 
 from hydra import log
 from hydra.app.call import Call
-from hydra.rpc.hydra_rpc import BaseRPC
+from hydra.rpc import BaseRPC
 
 from .base import *
 from .db import DB
