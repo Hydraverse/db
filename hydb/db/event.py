@@ -115,6 +115,10 @@ class Event(Base):
 
 @sa_event.listens_for(Event, 'after_insert')
 def event_after_insert(mapper, connection, target):
+    if target is None:
+        log.warning("event_after_insert(): target is None.")
+        return
+
     @sa_event.listens_for(DB.current_session(), 'after_flush', once=True)
     def event_after_insert_flush(session, flush_context):
         Event.insert_listener_call(session, target)

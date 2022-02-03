@@ -79,7 +79,7 @@ class EventManager:
 
                     sent += 1
 
-                    log.info(
+                    log.debug(
                         f"Sent {block_sse_result.event} event for block #{block_sse_result.block.height} to {claimant}."
                     )
 
