@@ -353,18 +353,30 @@ class Block(Base):
 
     @staticmethod
     def __get_block_info(db: DB, block_height: int, block_hash: str):
-        info = db.rpcx.get_block(block_hash)
+        while 1:
+            info = db.rpcx.get_block(block_hash)
 
-        if info.height != block_height or info.hash != block_hash:
-            raise ValueError(f"Block info mismatch at height {block_height}/{info.height}")
+            if isinstance(info, str):
+                log.warning("get_block_info(): Explorer seems under maintenance, trying again in 10s.")
+                time.sleep(10)
+                continue
 
-        del info.hash
-        del info.height
+            if info.height != block_height or info.hash != block_hash:
+                raise ValueError(f"Block info mismatch at height {block_height}/{info.height}")
 
-        tx = []
+            del info.hash
+            del info.height
 
-        for txid in info.transactions:
-            tx.append(db.rpcx.get_tx(txid))
+            tx = []
 
-        return info, tx
+            for txid in info.transactions:
+                trxn = db.rpcx.get_tx(txid)
+
+                if isinstance(trxn, str):
+                    log.warning(f"get_block_info({block_height}:{txid}): Transaction could not load, skipping.")
+                    continue
+
+                tx.append(trxn)
+
+            return info, tx
 
