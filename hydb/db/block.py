@@ -131,7 +131,7 @@ class Block(Base):
             log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
             return False
 
-        if self.conf != conf:
+        if conf >= Block.CONF_MATURE:
 
             while 1:
                 try:
@@ -180,7 +180,7 @@ class Block(Base):
             return False
 
         if self.conf > Block.CONF_MATURE or not len(self.addr_hist):
-            log.info(f"Delete over-mature block #{self.height} with {self.conf} confirmations.")
+            log.debug(f"Delete over-mature block #{self.height} with {self.conf} confirmations.")
             db.Session.delete(self)
             return True
 
