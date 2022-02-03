@@ -271,7 +271,7 @@ class Block(Base):
                     db.Session.add(new_block)
                     db.Session.commit()
                     db.Session.refresh(new_block)
-                    log.info(f"Processed block #{new_block.height}  hist:{len(new_block.addr_hist)}")
+                    log.info(f"Processed block #{new_block.height}  hist: {len(new_block.addr_hist)}")
 
                     try:
                         db.api.sse_block_notify_create(block_pk=new_block.pkid)
