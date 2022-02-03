@@ -332,6 +332,12 @@ class UserAddr(UserAddrBase):
     def filter_addr_token_balances(self):
         return self.filter_info_token_balances(self.addr.info)
 
+    def matches(self, address: str, *, allow_name: bool = False):
+        return (
+                str(self.addr) == address or
+                (allow_name and self.name.lower() == address.lower())
+        )
+
 
 class UserAddrFull(UserAddr):
     user_addr_hist: List[UserAddrHistBase]
@@ -389,6 +395,11 @@ class User(UserBase):
 
     class Config:
         orm_mode = True
+
+    def find_addr(self, address: str, *, allow_names: bool = False) -> Optional[UserAddr]:
+        for ua in self.user_addrs:
+            if ua.matches(address, allow_name=allow_names):
+                return ua
 
     def filter_likely_addr_matches(self, address: str):
         return filter(
