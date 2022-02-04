@@ -8,5 +8,12 @@
       <jdbc-url>jdbc:postgresql://localhost:5432/hyve</jdbc-url>
       <working-dir>$ProjectFileDir$</working-dir>
     </data-source>
+    <data-source source="LOCAL" name="hyve@bot.hydra.space" uuid="1530ff95-ce8e-4b9f-9cb8-dc5435784753">
+      <driver-ref>postgresql</driver-ref>
+      <synchronize>true</synchronize>
+      <jdbc-driver>org.postgresql.Driver</jdbc-driver>
+      <jdbc-url>jdbc:postgresql://localhost:5433/hyve</jdbc-url>
+      <working-dir>$ProjectFileDir$</working-dir>
+    </data-source>
   </component>
 </project>
