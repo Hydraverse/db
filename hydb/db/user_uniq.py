@@ -1,4 +1,6 @@
 from time import time_ns
+from typing import List
+
 from cryptography.fernet import Fernet
 from hydra import log
 
@@ -80,7 +82,40 @@ class UserUniq(Base):
         return str(self.fernet(db).decrypt(self.hyve_addr_pk), encoding="utf-8")
 
     def decrypt_base_addr_pk(self, db: DB):
-        return str(self.fernet(db).decrypt(self.hyve_addr_pk), encoding="utf-8")
+        return str(self.fernet(db).decrypt(self.base_addr_pk), encoding="utf-8")
+
+    @staticmethod
+    def check_wallet_addrs(db: DB):
+        users: List[UserUniq] = db.Session.query(
+            UserUniq
+        ).all()
+
+        labels = db.rpc.listlabels()
+
+        for user in users:
+            addrs = UserUniq.label_addrs(db, labels, user.name)
+
+            if user.hyve_addr_hy not in addrs:
+                log.warning(f"Importing {user.name} hyve private key.")
+                db.rpc.importprivkey(
+                    hydraprivkey=user.decrypt_hyve_addr_pk(db),
+                    label=user.name,
+                    rescan=True
+                )
+                log.info(f"Imported {user.name} hyve private key.")
+
+            if user.base_addr_hy not in addrs:
+                log.warning(f"Importing {user.name} base private key.")
+                db.rpc.importprivkey(
+                    hydraprivkey=user.decrypt_base_addr_pk(db),
+                    label=user.name,
+                    rescan=True
+                )
+                log.info(f"Imported {user.name} base private key.")
+
+    @staticmethod
+    def label_addrs(db: DB, labels: List[str], label: str):
+        return db.rpc.getaddressesbylabel(label).keys() if label in labels else []
 
 
 DbUserUniqPkidColumn = lambda: Column(Integer, ForeignKey("user_uniq.pkid", ondelete="CASCADE"), nullable=False, unique=True, primary_key=True, index=True)

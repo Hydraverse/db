@@ -1,9 +1,5 @@
 from __future__ import annotations
 
-import os
-from typing import Dict, Optional
-
-import sqlalchemy.exc
 from attrdict import AttrDict
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, scoped_session
@@ -133,6 +129,19 @@ class DB:
                 log.info(f"Unlocking wallet '{self.wallet}'...")
                 self.rpc.walletpassphrase(self.passphrase, 99999999, staking_only=False)
                 log.info(f"Wallet unlocked.")
+
+            labels = self.rpc.listlabels()
+
+            if "hyve" not in labels or self.address not in UserUniq.label_addrs(self, labels, "hyve"):
+                log.warning(f"Importing main hyve address private key for {self.address}.")
+                self.rpc.importprivkey(
+                    hydraprivkey=self.privkey,
+                    label="hyve",
+                    rescan=True
+                )
+                log.info("Imported main hyve address private key.")
+
+            UserUniq.check_wallet_addrs(self)
 
     class WithSession:
         db: DB
