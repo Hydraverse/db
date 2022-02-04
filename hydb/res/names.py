@@ -281,6 +281,12 @@ Ha'Dara
 Hadro
 Hakton
 Halii
+Halospace
+Haloverse
+Hyve
+Hydraverse
+Halosphere
+Hydrashpere
 Halkan
 Hanon
 Hanoran
