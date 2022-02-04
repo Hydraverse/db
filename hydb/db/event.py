@@ -19,7 +19,7 @@ class Event(Base):
         DbInfoColumnIndex(__tablename__, "claim"),
     )
 
-    __LISTENERS = []
+    __LISTENERS = {}
 
     pkid = DbPkidColumn(seq="event_seq")
     date_create = DbDateCreateColumn()
@@ -30,20 +30,29 @@ class Event(Base):
 
     @staticmethod
     def insert_listener_add(callback):
-        Event.__LISTENERS.append(callback)
+        @sa_event.listens_for(Event, 'after_insert')
+        def event_after_insert(mapper, connection, target):
+            if target is None:
+                log.warning("event_after_insert(): target is None.")
+                return
+
+            @sa_event.listens_for(DB.current_session(), 'after_flush', once=True)
+            def event_after_insert_flush(session, flush_context):
+                Event._insert_listener_call(session, target, callback)
+
+        Event.__LISTENERS[callback] = event_after_insert
 
     @staticmethod
     def insert_listener_rem(callback):
-        Event.__LISTENERS.remove(callback)
+        del Event.__LISTENERS[callback]
 
     @staticmethod
-    def insert_listener_call(session, target):
-        for callback in Event.__LISTENERS:
-            # noinspection PyBroadException
-            try:
-                callback(session, target)
-            except BaseException as exc:
-                log.critical("Event insert listener callback error", exc_info=exc)
+    def _insert_listener_call(session, target, callback):
+        # noinspection PyBroadException
+        try:
+            callback(session, target)
+        except BaseException as exc:
+            log.critical("Event insert listener callback error", exc_info=exc)
 
         Event.delete_expired(session)
 
@@ -112,13 +121,3 @@ class Event(Base):
             # Causes later error "This transaction is closed":
             # session.commit()
 
-
-@sa_event.listens_for(Event, 'after_insert')
-def event_after_insert(mapper, connection, target):
-    if target is None:
-        log.warning("event_after_insert(): target is None.")
-        return
-
-    @sa_event.listens_for(DB.current_session(), 'after_flush', once=True)
-    def event_after_insert_flush(session, flush_context):
-        Event.insert_listener_call(session, target)
