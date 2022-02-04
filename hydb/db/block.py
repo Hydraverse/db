@@ -4,9 +4,11 @@ import asyncio
 import time
 from typing import Optional, List
 
+import requests
 import sqlalchemy.orm.exc
 from hydra import log
 from hydra.rpc import BaseRPC
+from requests import RequestException
 from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select, asc
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
@@ -194,6 +196,10 @@ class Block(Base):
                     db.api.sse_block_notify_mature(block_pk=self.pkid)
                 except BaseRPC.Exception as exc:
                     log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
+                except RequestException as exc:
+                    log.critical(f"Unable to send block mature notify: request={exc.request} response={exc.response}", exc_info=exc)
+                except BaseException as exc:
+                    log.critical(f"Unable to send block mature notify: {exc}", exc_info=exc)
                 else:
                     log.debug(f"Sent notification for matured block #{self.pkid}")
 
@@ -277,6 +283,10 @@ class Block(Base):
                         db.api.sse_block_notify_create(block_pk=new_block.pkid)
                     except BaseRPC.Exception as exc:
                         log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
+                    except RequestException as exc:
+                        log.critical(f"Unable to send block notify: request={exc.request} response={exc.response}", exc_info=exc)
+                    except BaseException as exc:
+                        log.critical(f"Unable to send block notify: {exc}", exc_info=exc)
                     else:
                         log.debug(f"Sent notification for new block #{new_block.pkid}")
 
