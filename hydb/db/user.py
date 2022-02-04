@@ -4,7 +4,7 @@ from typing import Optional, Union
 from attrdict import AttrDict
 from deepdiff import DeepDiff
 
-from sqlalchemy import Column, Integer
+from sqlalchemy import Column, Integer, BigInteger
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import relationship
 
@@ -27,7 +27,7 @@ class User(Base):
 
     pkid = DbUserUniqPkidColumn()
 
-    tg_user_id = Column(Integer, nullable=False, unique=True, primary_key=False, index=True)
+    tg_user_id = Column(BigInteger, nullable=False, unique=True, primary_key=False, index=True)
 
     block_c = Column(Integer, nullable=False, server_default="0")
 
