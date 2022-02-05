@@ -307,7 +307,10 @@ class UserAddrBase(BaseModel):
             + info.get("qrc721Balances", [])
         )
 
-    def likely_matches(self, address: str, addr: Optional[AddrBase] = None):
+    def likely_matches(self, address: str, addr: Optional[AddrBase] = None) -> bool:
+        if not address:
+            return False
+
         if addr is None:
             if not isinstance(self, UserAddr):
                 raise TypeError("Must supply addr when calling UserAddrBase.likely_matches().")
@@ -319,7 +322,10 @@ class UserAddrBase(BaseModel):
         return (
                 addr_str == address or
                 self.name.lower().startswith(address.lower()) or
-                addr_str.startswith(address)
+                addr_str.startswith(address) or (
+                    len(address) >= 4 and
+                    address.lower() in self.name.lower()
+                )
         )
 
 
