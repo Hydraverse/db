@@ -138,6 +138,10 @@ class Block(Base):
             while 1:
                 try:
                     self.conf = conf
+
+                    for addr_hist in self.addr_hist:
+                        addr_hist.on_update_conf(db)
+
                     db.Session.add(self)
                     db.Session.commit()
 
@@ -182,7 +186,7 @@ class Block(Base):
             return False
 
         if self.conf > Block.CONF_MATURE or not len(self.addr_hist):
-            log.debug(f"Delete over-mature block #{self.height} with {self.conf} confirmations.")
+            log.debug(f"Delete over-mature block #{self.height} with {self.conf} confirmations and {len(self.addr_hist)} hist entries.")
             db.Session.delete(self)
             return True
 

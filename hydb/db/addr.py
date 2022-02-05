@@ -102,6 +102,12 @@ class Addr(Base):
 
         return True
 
+    def on_update_conf(self, db: DB) -> bool:
+        if int(self.info.get("staking", 0)) or int(self.info.get("mature", self.info["balance"])) != int(self.info["balance"]):
+            return self.update_info(db)
+
+        return False
+
     def update_info(self, db: DB) -> bool:
         block_height: int = db.rpc.getblockcount()
 

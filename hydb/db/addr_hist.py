@@ -37,6 +37,9 @@ class AddrHist(Base):
     def mined(self) -> bool:
         return self.block.info.get("miner", "") == self.addr.addr_hy
 
+    def on_update_conf(self, db: DB) -> bool:
+        return self.addr.on_update_conf(db)
+
     def on_block_mature(self, db: DB):
         self.addr.update_info(db)
 
