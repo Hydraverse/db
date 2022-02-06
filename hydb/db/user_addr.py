@@ -88,9 +88,13 @@ class UserAddr(Base):
         if addr_hist.mined:
             self.block_t = datetime.utcfromtimestamp(addr_hist.block.info.get("timestamp"))
             self.block_c += 1
-            self.user.block_c += 1
+
+            if self.info.get("v", None) is not None:
+                self.user.on_verified_block(db, self)
+            else:
+                self.user.on_block(db, self)
+
             db.Session.add(self)
-            db.Session.add(self.user)
 
     def addr_hist_del(self, db: DB, user_addr_hist_pk: int) -> bool:
         for uah in self.user_addr_hist:

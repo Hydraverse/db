@@ -26,10 +26,9 @@ class User(Base):
     )
 
     pkid = DbUserUniqPkidColumn()
+    date_update = DbDateUpdateColumn()
 
     tg_user_id = Column(BigInteger, nullable=False, unique=True, primary_key=False, index=True)
-
-    block_c = Column(Integer, nullable=False, server_default="0")
 
     info = DbInfoColumn()
     data = DbDataColumn()
@@ -98,6 +97,15 @@ class User(Base):
         db.Session.refresh(user_)
 
         return user_
+
+    # noinspection PyUnusedLocal
+    def on_verified_block(self, db: DB, user_addr: UserAddr):
+        # TODO: More detailed recording here.
+        self.info["block_c"] = self.info.get("block_c", 0) + 1
+        db.Session.add(self)
+
+    def on_block(self, db: DB, user_addr: UserAddr):
+        pass
 
     @staticmethod
     def delete_by_id(db: DB, tg_user_id: int) -> None:

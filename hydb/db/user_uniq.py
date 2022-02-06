@@ -22,7 +22,6 @@ class UserUniq(Base):
 
     pkid = DbPkidColumn(seq="user_uniq_seq")
     date_create = DbDateCreateColumn()
-    date_update = DbDateUpdateColumn()
     time_create = Column(BigInteger, nullable=False, unique=True)
     name_weight = Column(BigInteger, nullable=False, unique=False)
     name = Column(String, nullable=False, unique=True)

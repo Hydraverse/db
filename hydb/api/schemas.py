@@ -250,8 +250,6 @@ class UserBase(BaseModel):
 
     tg_user_id: int
 
-    block_c: int
-
     info: AttrDict
 
     class Config:
