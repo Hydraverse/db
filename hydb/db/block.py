@@ -24,6 +24,7 @@ class LocalState:
     # Testnet blocks:
     # 160387 (160388 is HYDRA SC TX + minting two tokens to sender)
     # 160544 (160545 is HYDRA TX)
+    # 175377 (175378 is NFT TX)
     height = 0
     hash = ""
 
