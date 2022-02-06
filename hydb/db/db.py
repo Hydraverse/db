@@ -34,14 +34,14 @@ class DB:
         address="(HYDRA address owned by db)",
         privkey="(Private key for above address)",
         fernet=lambda: Fernet.generate_key(),
-        debug=True,
+        debug=False,
     )
 
     def __init__(self):
         conf = Config.get(DB)
         self.debug = conf.get("debug", False)
         self.url = conf.url
-        self.wallet = conf.wallet
+        self.wallet = conf.get("wallet", None)
 
         if len(conf.fernet) != 44:
             raise ValueError("DB config fernet key wrong length. Use cryptography.fernet.Fernet.generate_key().")
@@ -49,38 +49,39 @@ class DB:
         self.fernet = Fernet(conf.fernet)
         del conf.fernet
 
-        if len(conf.passphrase) < 52:
-            raise ValueError("DB config wallet passphrase is too short (< 52).")
-        elif len(conf.passphrase) > 52:
-            log.warning("Processing wallet passphrase as encrypted.")
-            self.passphrase = str(
-                self.fernet.decrypt(
-                    bytes(conf.passphrase, encoding="ascii")
-                ),
-                encoding="ascii"
-            )
+        if self.wallet:
+            if len(conf.passphrase) < 52:
+                raise ValueError("DB config wallet passphrase is too short (< 52).")
+            elif len(conf.passphrase) > 52:
+                log.warning("Processing wallet passphrase as encrypted.")
+                self.passphrase = str(
+                    self.fernet.decrypt(
+                        bytes(conf.passphrase, encoding="ascii")
+                    ),
+                    encoding="ascii"
+                )
 
-            if len(self.passphrase) < 52:
-                raise ValueError("Decrypted wallet passphrase too short (< 52).")
-        else:
-            self.passphrase = conf.passphrase
+                if len(self.passphrase) < 52:
+                    raise ValueError("Decrypted wallet passphrase too short (< 52).")
+            else:
+                self.passphrase = conf.passphrase
 
-        if len(conf.privkey) > 52:
-            log.warning("Processing HYDRA privkey as encrypted.")
-            self.privkey = str(
-                self.fernet.decrypt(
-                    bytes(conf.privkey, encoding="ascii")
-                ),
-                encoding="ascii"
-            )
+            if len(conf.privkey) > 52:
+                log.warning("Processing HYDRA privkey as encrypted.")
+                self.privkey = str(
+                    self.fernet.decrypt(
+                        bytes(conf.privkey, encoding="ascii")
+                    ),
+                    encoding="ascii"
+                )
 
-            if len(self.privkey) != 52:
-                raise ValueError("DB config Decrypted HYDRA privkey wrong length (not 52).")
-        elif len(conf.privkey) != 52:
-            raise ValueError("DB config HYDRA privkey wrong length (not 52).")
+                if len(self.privkey) != 52:
+                    raise ValueError("DB config Decrypted HYDRA privkey wrong length (not 52).")
+            elif len(conf.privkey) != 52:
+                raise ValueError("DB config HYDRA privkey wrong length (not 52).")
 
-        if len(conf.address) != 34:
-            raise ValueError("DB config HYDRA address or privkey not valid.")
+            if len(conf.address) != 34:
+                raise ValueError("DB config HYDRA address or privkey not valid.")
 
         self.address = conf.address
 
