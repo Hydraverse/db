@@ -46,6 +46,10 @@ class ServerInfo(BaseModel):
     mainnet: bool
 
 
+class UpdateResult(BaseModel):
+    updated: bool
+
+
 EnumTypeVar = TypeVar("EnumTypeVar")
 
 
@@ -361,8 +365,8 @@ class UserAddrUpdate(BaseModel):
     data: Optional[AttrDict]
     over: Optional[bool]
 
-    class Result(BaseModel):
-        updated: bool
+    class Result(UpdateResult):
+        pass
 
     @staticmethod
     def validate_name(name: str):
@@ -420,8 +424,8 @@ class UserInfoUpdate(BaseModel):
     info: AttrDict
     over: bool
 
-    class Result(BaseModel):
-        info: AttrDict
+    class Result(UpdateResult):
+        pass
 
 
 class UserAddrResult(UserAddrBase):

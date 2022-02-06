@@ -145,7 +145,8 @@ class User(Base):
             db.Session.add(self)
             db.Session.commit()
             db.Session.refresh(self)
-            return schemas.UserInfoUpdate.Result(info=self.info)
+
+        return schemas.UserInfoUpdate.Result(updated=changed)
 
     def addr_get(self, db: DB, address: str, create: Union[bool, str] = True) -> Optional[UserAddr]:
         return UserAddr.get(db=db, user=self, address=address, create=create)
