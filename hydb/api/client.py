@@ -2,6 +2,7 @@ import asyncio
 from typing import Optional, Callable
 
 import sseclient
+from aiocache import cached
 from sseclient import SSEClient
 
 from hydra.rpc.base import BaseRPC
@@ -52,6 +53,10 @@ class HyDbClient(BaseRPC):
 
     def stats(self) -> schemas.Stats:
         return schemas.Stats(**self.get("/stats"))
+
+    @cached(ttl=60, key="stats_async")
+    async def stats_cache(self) -> schemas.Stats:
+        return await self.asyncc.stats()
 
     def sse_block_notify_create(self, block_pk: int) -> None:
         self.get(

@@ -43,6 +43,7 @@ setup(
             "sse-starlette",
             "uvicorn[standard]",
             "cryptography",
+            "aiocache",
         ]
     },
     # entry_points={
