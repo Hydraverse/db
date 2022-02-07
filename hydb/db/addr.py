@@ -194,7 +194,7 @@ class Addr(Base):
             for addr_hist in list(self.addr_hist):
                 addr_hist._remove(db, self.addr_hist)
 
-            log.info(f"Deleting {self.addr_tp.value} address {str(self)} with no users.")
+            log.info(f"Deleting {self.addr_tp.value} address with no users.")
             db.Session.delete(self)
         else:
             for addr_hist in list(self.addr_hist):

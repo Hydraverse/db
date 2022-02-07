@@ -51,7 +51,7 @@ class AddrHist(Base):
 
     def _removed_user(self, db: DB):
         if not len(self.addr_hist_user):
-            log.info(f"Deleting Block #{self.block.height} history for addr {str(self.addr)} with no users.")
+            log.info(f"Deleting Block #{self.block.height} history for {self.addr.addr_tp} address with no users.")
             self._remove(db, self.addr.addr_hist)
 
     def _remove(self, db: DB, addr_hist):
