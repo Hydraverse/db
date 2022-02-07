@@ -42,6 +42,10 @@ def timedelta_str(td: timedelta) -> str:
     )
 
 
+class UserMap(BaseModel):
+    map: Dict[int, int]
+
+
 class StatQuantNetWeight(BaseModel):
     count: int
     median_1h: Optional[Decimal]

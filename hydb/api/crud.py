@@ -1,5 +1,5 @@
 import json
-from typing import Optional
+from typing import Optional, List
 
 from deepdiff import DeepDiff
 from sqlalchemy import func
@@ -11,6 +11,19 @@ from . import schemas
 
 def server_info(db: DB) -> schemas.ServerInfo:
     return schemas.ServerInfo(mainnet=db.rpc.mainnet)
+
+
+def user_map(db: DB) -> schemas.UserMap:
+    users: List[models.User] = db.Session.query(
+        models.User
+    ).all()
+
+    return schemas.UserMap(
+        map={
+            u.tg_user_id: u.uniq.pkid
+            for u in users
+        }
+    )
 
 
 def user_get_by_tgid(db: DB, tg_user_id: int) -> Optional[models.User]:

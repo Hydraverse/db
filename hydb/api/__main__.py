@@ -78,6 +78,11 @@ async def sse_block_next(request: Request, db: DB = Depends(dbase.yield_with_ses
     return EventSourceResponse(event_generator)
 
 
+@app.get("/u/map", response_model=schemas.UserMap)
+def user_map(db: DB = Depends(dbase.yield_with_session)):
+    return crud.user_map(db)
+
+
 @app.post("/u/", response_model=schemas.User)
 def user_add(user_create: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
     db_user = crud.user_get_by_tgid(db, user_create.tg_user_id)
