@@ -15,6 +15,11 @@ _DecimalNew = Union[Decimal, float, str, Tuple[int, Sequence[int], int]]
 
 def timedelta_str(td: timedelta) -> str:
     td_msg = AttrDict()
+    neg = False
+    
+    if td < timedelta(0):
+        td = abs(td)
+        neg = True
 
     if td.days > 0:
         td_msg.days = str(td.days) + "d"
@@ -31,14 +36,15 @@ def timedelta_str(td: timedelta) -> str:
         seconds -= minutes * 60
         td_msg.minutes = str(minutes) + "m"
 
-    if not len(td_msg):
+    if not len(td_msg) or (len(td_msg) == 1 and "minutes" in td_msg):
         td_msg.seconds = str(seconds) + "s"
 
     return (
-            td_msg.get('days', '') +
-            td_msg.get('hours', '') +
-            td_msg.get('minutes', '') +
-            td_msg.get('seconds', '')
+            ("-" if neg else "") +
+            td_msg.get("days", "") +
+            td_msg.get("hours", "") +
+            td_msg.get("minutes", "") +
+            td_msg.get("seconds", "")
     )
 
 
