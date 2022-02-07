@@ -43,6 +43,7 @@ def timedelta_str(td: timedelta) -> str:
 
 
 class StatQuantNetWeight(BaseModel):
+    count: int
     median_1h: Optional[Decimal]
     median_1d: Optional[Decimal]
     median_1w: Optional[Decimal]

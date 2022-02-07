@@ -54,7 +54,7 @@ class HyDbClient(BaseRPC):
     def stats(self) -> schemas.Stats:
         return schemas.Stats(**self.get("/stats"))
 
-    @cached(ttl=60, key="stats_async")
+    @cached(ttl=60, key="stats_cache")
     async def stats_cache(self) -> schemas.Stats:
         return await self.asyncc.stats()
 

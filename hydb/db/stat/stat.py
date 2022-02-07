@@ -90,9 +90,25 @@ class Stat(StatBase, Base):
 
 
 class StatQuantNetWeightView(StatBase, Base):
+    """
+    create view stat.quant_net_weight(count, median_1h, median_1d, median_1w, median_1m) as
+    SELECT (SELECT count(pkid) FROM stat.stat)                               AS count,
+           (SELECT quantile(stat.net_weight, 0.5::double precision) AS quantile
+            FROM stat.stat
+            WHERE stat."time" > (now()::timestamp without time zone - '01:00:00'::interval)) AS median_1h,
+           (SELECT quantile(stat.net_weight, 0.5::double precision) AS quantile
+            FROM stat.stat
+            WHERE stat."time" > (now()::timestamp without time zone - '1 day'::interval))    AS median_1d,
+           (SELECT quantile(stat.net_weight, 0.5::double precision) AS quantile
+            FROM stat.stat
+            WHERE stat."time" > (now()::timestamp without time zone - '7 days'::interval))   AS median_1w,
+           (SELECT quantile(stat.net_weight, 0.5::double precision) AS quantile
+            FROM stat.stat
+            WHERE stat."time" > (now()::timestamp without time zone - '1 mon'::interval))    AS median_1m;
+    """
     __tablename__ = "quant_net_weight"
 
-    dummy = Column(Integer, default=0)
+    count = Column(Integer, default=0)
 
     median_1h = Column(Numeric, nullable=True)
     median_1d = Column(Numeric, nullable=True)
@@ -100,7 +116,7 @@ class StatQuantNetWeightView(StatBase, Base):
     median_1m = Column(Numeric, nullable=True)
 
     __mapper_args__ = {
-        'primary_key': [dummy]
+        'primary_key': [count]
     }
 
     @staticmethod
@@ -109,6 +125,27 @@ class StatQuantNetWeightView(StatBase, Base):
 
 
 class StatQuantView1d(StatBase, Base):
+    """
+    create view stat.quant_stat_1d
+            (pkid, time, apr, blocks, connections, time_offset, block_value, money_supply, burned_coins, net_weight,
+             net_hash_rate, net_diff_pos, net_diff_pow)
+    as
+    SELECT min(pkid)                                                                                AS "pkid",
+           max(stat."time") - min(stat."time")                                                      AS "time",
+           (SELECT quantile(stat.apr, 0.5::double precision) AS quantile)                           AS apr,
+           count(stat.blocks)                                                                       AS blocks,
+           (SELECT quantile(stat.connections::double precision, 0.5::double precision) AS quantile) AS connections,
+           (SELECT quantile(stat.time_offset, 0.5::double precision) AS quantile)                   AS time_offset,
+           (SELECT quantile(stat.block_value, 0.5::double precision) AS quantile)                   AS block_value,
+           (SELECT quantile(stat.money_supply, 0.5::double precision) AS quantile)                  AS money_supply,
+           max(stat.burned_coins) - min(stat.burned_coins)                                          AS burned_coins,
+           (SELECT quantile(stat.net_weight, 0.5::double precision) AS quantile)                    AS net_weight,
+           (SELECT quantile(stat.net_hash_rate, 0.5::double precision) AS quantile)                 AS net_hash_rate,
+           (SELECT quantile(stat.net_diff_pos, 0.5::double precision) AS quantile)                  AS net_diff_pos,
+           (SELECT quantile(stat.net_diff_pow, 0.5::double precision) AS quantile)                  AS net_diff_pow
+    FROM stat.stat
+    WHERE stat."time" > (now()::timestamp without time zone - '1 day'::interval);
+    """
     __tablename__ = "quant_stat_1d"
 
     pkid = Column(Integer,  primary_key=True)
