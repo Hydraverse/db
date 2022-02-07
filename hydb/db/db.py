@@ -90,6 +90,7 @@ class DB:
         self.Session = scoped_session(sessionmaker(bind=self.engine))
 
         Base.metadata.create_all(self.engine)
+        StatBase.metadata.create_all(self.engine)
 
         conf_rpc = Config.get(HydraRPC)
 
@@ -196,6 +197,8 @@ from hydb.db.user import __all__ as __user_all__
 from hydb.db.user import *
 from hydb.db.event import __all__ as __event_all__
 from hydb.db.event import *
+from hydb.db.stat import __all__ as __stat_all__
+from hydb.db.stat import *
 
 __all__ = (
     ("DB",) +
@@ -203,5 +206,6 @@ __all__ = (
     __user_all__ +
     __addr_all__ +
     __block_all__ +
-    __event_all__
+    __event_all__ +
+    __stat_all__
 )

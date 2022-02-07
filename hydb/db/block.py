@@ -1,15 +1,13 @@
 from __future__ import annotations
 
-import asyncio
 import time
 from typing import Optional, List
 
-import requests
 import sqlalchemy.orm.exc
 from hydra import log
 from hydra.rpc import BaseRPC
 from requests import RequestException
-from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, func, select, asc
+from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, asc
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -350,7 +348,7 @@ class Block(Base):
         chain_height = db.rpc.getblockcount()
         chain_hash = db.rpc.getblockhash(chain_height)
 
-        log.debug(f"Poll: chain={chain_height} local={LocalState.height}")
+        # log.debug(f"Poll: chain={chain_height} local={LocalState.height}")
 
         if chain_height == LocalState.height:
             if LocalState.hash and chain_hash != LocalState.hash:
@@ -381,8 +379,6 @@ class Block(Base):
 
             del info.hash
             del info.height
-
-            info.subsidy = int(db.rpc.getsubsidy())
 
             tx = []
 

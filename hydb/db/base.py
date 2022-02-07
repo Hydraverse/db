@@ -1,5 +1,5 @@
 from attrdict import AttrDict
-from sqlalchemy import Column, DateTime, func, Integer, Sequence, Index
+from sqlalchemy import Column, DateTime, func, Integer, Sequence, Index, MetaData
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 from sqlalchemy_json import mutable_json_type
