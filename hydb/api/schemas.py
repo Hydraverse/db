@@ -42,6 +42,51 @@ def timedelta_str(td: timedelta) -> str:
     )
 
 
+class StatQuantNetWeight(BaseModel):
+    median_1h: Optional[Decimal]
+    median_1d: Optional[Decimal]
+    median_1w: Optional[Decimal]
+    median_1m: Optional[Decimal]
+
+    class Config:
+        orm_mode = True
+
+
+class Stat(BaseModel):
+    pkid: int
+    time: datetime
+    apr: Decimal
+    blocks: int
+    connections: int
+    time_offset: int
+    block_value: Decimal
+    money_supply: Decimal
+    burned_coins: Decimal
+    net_weight: Decimal
+    net_hash_rate: Decimal
+    net_diff_pos: Decimal
+    net_diff_pow: Decimal
+
+    class Config:
+        orm_mode = True
+
+
+class StatQuant(Stat):
+    time: timedelta
+
+    class Config:
+        orm_mode = True
+
+
+class Stats(BaseModel):
+    current: Stat
+    quant_stat_1d: StatQuant
+    quant_net_weight: StatQuantNetWeight
+
+    class Config:
+        orm_mode = True
+
+
 class ServerInfo(BaseModel):
     mainnet: bool
 

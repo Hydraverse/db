@@ -50,6 +50,9 @@ class HyDbClient(BaseRPC):
     def server_info(self) -> schemas.ServerInfo:
         return schemas.ServerInfo(**self.get("/server/info"))
 
+    def stats(self) -> schemas.Stats:
+        return schemas.Stats(**self.get("/stats"))
+
     def sse_block_notify_create(self, block_pk: int) -> None:
         self.get(
             path=f"/sse/block/{block_pk}/{schemas.SSEBlockEvent.create}",

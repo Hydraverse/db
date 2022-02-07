@@ -1,22 +1,15 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_
+from typing import Optional
+
+from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_, Table, Interval, desc
 from sqlalchemy.orm import relationship
 
 from .base import *
 from .block import BlockStat
 from ..db import DB, Block
 
-__all__ = "Stat",
-
-# class StatViewTestXXX:  # (Base)
-#     __table__ = Table("some_view", Base.metadata, autoload=True)
-#
-#     id = Column(Integer, primary_key=True)
-#
-#     __mapper_args__ = {
-#         'primary_key': [__table__.c.id]
-#     }
+__all__ = "Stat", "StatQuantNetWeightView", "StatQuantView1d"
 
 
 class Stat(StatBase, Base):
@@ -90,3 +83,56 @@ class Stat(StatBase, Base):
             )
 
         ).limit(1).scalar()
+
+    @staticmethod
+    def current(db: DB) -> Optional[Stat]:
+        return db.Session.query(Stat).order_by(desc(Stat.pkid)).limit(1).one_or_none()
+
+
+class StatQuantNetWeightView(StatBase, Base):
+    __tablename__ = "quant_net_weight"
+
+    dummy = Column(Integer, default=0)
+
+    median_1h = Column(Numeric, nullable=True)
+    median_1d = Column(Numeric, nullable=True)
+    median_1w = Column(Numeric, nullable=True)
+    median_1m = Column(Numeric, nullable=True)
+
+    __mapper_args__ = {
+        'primary_key': [dummy]
+    }
+
+    @staticmethod
+    def get(db: DB) -> StatQuantNetWeightView:
+        return db.Session.query(StatQuantNetWeightView).one()
+
+
+class StatQuantView1d(StatBase, Base):
+    __tablename__ = "quant_stat_1d"
+
+    pkid = Column(Integer,  primary_key=True)
+
+    time = Column(Interval)
+
+    apr = Column(Numeric)
+    blocks = Column(Integer)
+    connections = Column(SmallInteger)
+    time_offset = Column(Integer)
+
+    block_value = Column(Numeric)
+    money_supply = Column(Numeric)
+    burned_coins = Column(Numeric)
+
+    net_weight = Column(Numeric)
+    net_hash_rate = Column(Numeric)
+    net_diff_pos = Column(Numeric)
+    net_diff_pow = Column(Numeric)
+
+    __mapper_args__ = {
+        'primary_key': [pkid]
+    }
+
+    @staticmethod
+    def get(db: DB) -> StatQuantView1d:
+        return db.Session.query(StatQuantView1d).one()

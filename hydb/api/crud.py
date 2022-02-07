@@ -170,3 +170,16 @@ def block_sse_event_add(db: DB, block: models.Block, event: schemas.SSEBlockEven
         event="block",
         data=block_sse_result(db, block, event)
     )
+
+
+def stats_get(db: DB) -> Optional[schemas.Stats]:
+    stats = models.Stat.current(db)
+
+    if stats is None:
+        return None
+
+    return schemas.Stats(
+        current=stats,
+        quant_stat_1d=models.StatQuantView1d.get(db),
+        quant_net_weight=models.StatQuantNetWeightView.get(db)
+    )
