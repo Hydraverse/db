@@ -61,7 +61,7 @@ class Block(Base):
         while 1:
             # noinspection PyBroadException
             try:
-                info, txes = Block.__get_block_info(db, self.height, self.hash)
+                info, txes = self.__get_block_info(db)
                 break
             except BaseRPC.Exception as exc:
                 if exc.response.status_code == 404:
@@ -384,18 +384,19 @@ class Block(Base):
 
         return True
 
-    @staticmethod
-    def __get_block_info(db: DB, block_height: int, block_hash: str):
+    def __get_block_info(self, db: DB):
         while 1:
-            info = db.rpcx.get_block(block_hash)
+            info = db.rpcx.get_block(self.height)
 
             if isinstance(info, str):
                 log.warning("get_block_info(): Explorer seems under maintenance, trying again in 10s.")
                 time.sleep(10)
                 continue
 
-            if info.height != block_height or info.hash != block_hash:
-                raise ValueError(f"Block info mismatch at height {block_height}/{info.height}")
+            if info.height != self.height or info.hash != self.hash:
+                log.warning(f"Block info mismatch at height {self.height}/{self.hash} != {info.height}/{info.hash}")
+                self.height = info.height
+                self.hash = info.hash
 
             del info.hash
             del info.height
@@ -406,7 +407,7 @@ class Block(Base):
                 trxn = db.rpcx.get_tx(txid)
 
                 if isinstance(trxn, str):
-                    log.warning(f"get_block_info({block_height}:{txid}): Transaction could not load, skipping.")
+                    log.warning(f"get_block_info({self.height}:{txid}): Transaction could not load, skipping.")
                     continue
 
                 tx.append(trxn)
