@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime
+from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_
 from sqlalchemy.orm import relationship
 
 from .base import *
@@ -77,5 +77,16 @@ class Stat(StatBase, Base):
             block=BlockStat(db, block, stat=self)
         )
 
+    @staticmethod
+    def exists_for_block(db: DB, block: Block) -> bool:
+        return 1 == db.Session.query(
 
+            func.count(BlockStat.pkid)
 
+        ).where(
+            and_(
+                BlockStat.height == block.height,
+                BlockStat.hash == block.hash,
+            )
+
+        ).limit(1).scalar()

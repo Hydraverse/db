@@ -7,7 +7,7 @@ import sqlalchemy.orm.exc
 from hydra import log
 from hydra.rpc import BaseRPC
 from requests import RequestException
-from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, asc
+from sqlalchemy import Column, String, Integer, desc, UniqueConstraint, and_, or_, asc, func
 from sqlalchemy.exc import NoResultFound
 from sqlalchemy.orm import relationship
 
@@ -55,7 +55,7 @@ class Block(Base):
             log.info(f"Deleting block #{self.height} with no history.")
             db.Session.delete(self)
 
-    def on_new_block(self, db: DB) -> bool:
+    def on_new_block(self, db: DB, chain_height: int) -> bool:
         info, txes = None, None
 
         while 1:
@@ -70,11 +70,11 @@ class Block(Base):
                     time.sleep(10)
                     continue
 
-                log.critical(f"RPC error querying explorer API: {str(exc)}. (Retrying in 30s)", exc_info=exc)
+                log.error(f"RPC error querying explorer API: {str(exc)}. (Retrying in 30s)", exc_info=exc)
                 time.sleep(30)
                 continue
             except BaseException as exc:
-                log.critical(f"Error querying explorer API: {str(exc)}. (Retrying in 60s)", exc_info=exc)
+                log.error(f"Error querying explorer API: {str(exc)}. (Retrying in 60s)", exc_info=exc)
                 time.sleep(60)
                 continue
 
@@ -107,20 +107,40 @@ class Block(Base):
             )
         ).all()
 
-        if not len(addrs):
-            return False
-
-        added_history = False
-
         self.conf = info["confirmations"]
         del info["confirmations"]
         self.info = info
         self.tx = txes
 
+        added_history = False
+
         for addr in addrs:
             added_history |= addr.on_block_create(db=db, block=self)
 
+        if self.height == chain_height:
+            self.make_stat(db)
+
         return added_history
+
+    def make_stat(self, db: DB):
+        from .stat import Stat
+
+        try:
+            if not Stat.exists_for_block(db, self):
+                stat = Stat(db=db, block=self)
+
+                db.Session.add(stat)
+                db.Session.commit()
+                db.Session.refresh(stat)
+
+                log.info(f"Added stat #{stat.pkid} for block #{self.height}")
+
+        except sqlalchemy.exc.SQLAlchemyError as exc:
+            log.warning(f"Exception while adding new Stat entry: {exc}", exc_info=exc)
+        except BaseRPC.Exception as exc:
+            log.warning(f"RPC Exception while adding new Stat entry: {exc}", exc_info=exc)
+        except BaseException as exc:
+            log.warning(f"Other Exception while adding new Stat entry: {exc}", exc_info=exc)
 
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
@@ -198,11 +218,11 @@ class Block(Base):
                 try:
                     db.api.sse_block_notify_mature(block_pk=self.pkid)
                 except BaseRPC.Exception as exc:
-                    log.critical(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
+                    log.error(f"Unable to send block mature notify: response={exc.response} error={exc.error}", exc_info=exc)
                 except RequestException as exc:
-                    log.critical(f"Unable to send block mature notify: request={exc.request} response={exc.response}", exc_info=exc)
+                    log.error(f"Unable to send block mature notify: request={exc.request} response={exc.response}", exc_info=exc)
                 except BaseException as exc:
-                    log.critical(f"Unable to send block mature notify: {exc}", exc_info=exc)
+                    log.error(f"Unable to send block mature notify: {exc}", exc_info=exc)
                 else:
                     log.debug(f"Sent notification for matured block #{self.pkid}")
 
@@ -265,7 +285,7 @@ class Block(Base):
             return Block.make(db, height)
 
     @staticmethod
-    def make(db: DB, height: int) -> Optional[Block]:
+    def make(db: DB, height: int, chain_height: int) -> Optional[Block]:
         while 1:
             try:
                 bhash = db.rpc.getblockhash(height)
@@ -276,7 +296,7 @@ class Block(Base):
                     hash=bhash,
                 )
 
-                if new_block.on_new_block(db):
+                if new_block.on_new_block(db, chain_height):
                     db.Session.add(new_block)
                     db.Session.commit()
                     db.Session.refresh(new_block)
@@ -285,11 +305,11 @@ class Block(Base):
                     try:
                         db.api.sse_block_notify_create(block_pk=new_block.pkid)
                     except BaseRPC.Exception as exc:
-                        log.critical(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
+                        log.error(f"Unable to send block notify: response={exc.response} error={exc.error}", exc_info=exc)
                     except RequestException as exc:
-                        log.critical(f"Unable to send block notify: request={exc.request} response={exc.response}", exc_info=exc)
+                        log.error(f"Unable to send block notify: request={exc.request} response={exc.response}", exc_info=exc)
                     except BaseException as exc:
-                        log.critical(f"Unable to send block notify: {exc}", exc_info=exc)
+                        log.error(f"Unable to send block notify: {exc}", exc_info=exc)
                     else:
                         log.debug(f"Sent notification for new block #{new_block.pkid}")
 
@@ -357,7 +377,7 @@ class Block(Base):
                 return False
 
         for height in range(LocalState.height + 1, chain_height + 1):
-            Block.make(db, height)
+            Block.make(db, height, chain_height)
 
         LocalState.height = chain_height
         LocalState.hash = chain_hash

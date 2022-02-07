@@ -3,6 +3,7 @@ from sse_starlette.sse import EventSourceResponse
 from sqlalchemy import and_
 
 from hydra import log
+log.log_set(log.INFO)
 
 from ..db import DB
 
@@ -13,8 +14,6 @@ from . import crud
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
-
-log.log_set(log.INFO)
 
 
 @app.get("/")
