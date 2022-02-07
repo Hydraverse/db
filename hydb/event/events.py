@@ -30,7 +30,7 @@ class EventManager:
                 self.sem.release()
 
         def __enter__(self):
-            models.Event.insert_listener_add(self.__event_insert_callback)
+            models.Event.insert_listener_add(self.db, self.__event_insert_callback)
             return self
 
         def __exit__(self, exc_type, exc_val, exc_tb):

@@ -29,14 +29,14 @@ class Event(Base):
     data = Column(Text, nullable=False)
 
     @staticmethod
-    def insert_listener_add(callback):
+    def insert_listener_add(db, callback):
         @sa_event.listens_for(Event, 'after_insert')
         def event_after_insert(mapper, connection, target):
             if target is None:
                 log.warning("event_after_insert(): target is None.")
                 return
 
-            @sa_event.listens_for(DB.current_session(), 'after_flush', once=True)
+            @sa_event.listens_for(db.Session, 'after_flush', once=True)
             def event_after_insert_flush(session, flush_context):
                 Event._insert_listener_call(session, target, callback)
 
