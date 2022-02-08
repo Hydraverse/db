@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from decimal import Decimal
 from typing import Optional
 
 from hydra import log
@@ -54,7 +55,7 @@ class Stat(StatBase, Base):
         while 1:
             info = db.rpc.getinfo()
 
-            if int(info.moneysupply) == 0 or int(info.burnedcoins) == 0:
+            if Decimal(info.moneysupply) == 0 or Decimal(info.burnedcoins) == 0:
                 log.warning("Hydra RPC getinfo() returnd zero values, retrying.")
                 time.sleep(1)
                 continue
