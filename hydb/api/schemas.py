@@ -404,7 +404,10 @@ class UserAddr(UserAddrBase):
 
 
 class UserAddrFull(UserAddr):
-    user_addr_hist: List[UserAddrHistBase]
+    user: UserBase
+
+    # - Unused so far:
+    # user_addr_hist: List[UserAddrHistBase]
 
     class Config:
         orm_mode = True

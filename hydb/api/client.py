@@ -137,12 +137,12 @@ class HyDbClient(BaseRPC):
             )
         )
 
-    def user_addr_get(self, user: schemas.UserBase, address: str) -> Optional[schemas.UserAddrFull]:
+    def user_addr_get(self, user_pk: int, user_addr_pk: int) -> Optional[schemas.UserAddrFull]:
         result = self.get(
-            f"/u/{user.uniq.pkid}/a/{address}",
+            f"/u/{user_pk}/a/{user_addr_pk}",
         )
 
-        return result if result is None else schemas.UserAddr(
+        return result if result is None else schemas.UserAddrFull(
             **result
         )
 

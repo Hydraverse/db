@@ -2,7 +2,7 @@ import json
 from typing import Optional, List
 
 from deepdiff import DeepDiff
-from sqlalchemy import func
+from sqlalchemy import func, and_
 
 from hydb.db import DB
 from hydb import db as models
@@ -60,12 +60,15 @@ def user_info_update(db: DB, user: models.User, update: schemas.UserInfoUpdate) 
     return user.update_info(db, update)
 
 
-def user_addr_get(db: DB, user: models.User, address: str) -> Optional[models.UserAddr]:
-    return user.addr_get(
-        db=db,
-        address=address,
-        create=False
-    )
+def user_addr_get(db: DB, user_pk: int, user_addr_pk: int) -> Optional[models.UserAddr]:
+    return db.Session.query(
+        models.UserAddr,
+    ).where(
+        and_(
+            models.UserAddr.pkid == user_addr_pk,
+            models.UserAddr.user_pk == user_pk,
+        ),
+    ).one_or_none()
 
 
 def user_addr_add(db: DB, user: models.User, addr_add: schemas.UserAddrAdd) -> models.UserAddr:

@@ -1,3 +1,5 @@
+from typing import Optional
+
 from fastapi import FastAPI, Depends, HTTPException, APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy import and_
@@ -140,14 +142,9 @@ def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB
     )
 
 
-@app.get("/u/{user_pk}/a/{address}", response_model=schemas.UserAddrFull)
-def user_addr_get(user_pk: int, address: str, db: DB = Depends(dbase.yield_with_session)):
-    db_user = crud.user_get_by_pkid(db, user_pk)
-
-    if db_user is None:
-        raise HTTPException(status_code=404, detail="User not found.")
-
-    return crud.user_addr_get(db=db, user=db_user, address=address)
+@app.get("/u/{user_pk}/a/{user_addr_pk}", response_model=Optional[schemas.UserAddrFull])
+def user_addr_get(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_with_session)):
+    return crud.user_addr_get(db=db, user_pk=user_pk, user_addr_pk=user_addr_pk)
 
 
 @app.post("/u/{user_pk}/a/", response_model=schemas.UserAddr)
