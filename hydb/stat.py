@@ -3,20 +3,21 @@
 from attrdict import AttrDict
 from hydra.app.top import HydraApp, TopApp
 
-from hydb.api.client import HyDbClient
+from hydb.api.crud import stats_get
+from hydb.db import DB
 
 
 @HydraApp.register(name="stat", desc="Show status periodically", version="1.0")
 class StatApp(TopApp):
-    api: HyDbClient
+    db: DB
 
     def setup(self):
-        self.api = HyDbClient()
+        self.db = DB()
 
         super().setup()
 
     def read(self):
-        return AttrDict(self.api.stats().dict())
+        return AttrDict(stats_get(self.db).dict())
 
     # noinspection PyShadowingBuiltins
     def display(self, print=print):
