@@ -42,6 +42,9 @@ class UserAddrHist(Base):
         user_addr_hist.remove(self)
         addr_hist._removed_user(db)
 
+    def on_fork(self, db: DB):
+        self.user_addr.on_fork(db, self)
+
     @staticmethod
     def all_for_block(db: DB, block: Block) -> List[UserAddrHist]:
         uahs: List[UserAddrHist] = db.Session.query(
@@ -55,3 +58,4 @@ class UserAddrHist(Base):
         ).all()
 
         return uahs
+

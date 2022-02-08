@@ -109,6 +109,11 @@ class UserAddr(Base):
         user_addrs.remove(self)
         addr._removed_user(db)
 
+    def on_fork(self, db: DB, user_addr_hist: UserAddrHist):
+        self.block_c = user_addr_hist.block_c
+        self.block_t = user_addr_hist.block_t
+        db.Session.add(self)
+
     @staticmethod
     def get_by_addr(db: DB, user, addr: Addr, create: Union[bool, str] = True) -> Optional[UserAddr]:
         try:

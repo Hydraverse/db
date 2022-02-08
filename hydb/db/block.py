@@ -145,12 +145,43 @@ class Block(Base):
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(schemas.Block.tx_yield_addrs(tx)), self.tx)
 
-    def update_confirmations(self, db: DB) -> bool:
+    def on_fork(self, db: DB, hash_new: str):
+        if self.hash == hash_new:
+            return
+
+        log.critical(f"Fork detected at height {self.height}: {self.hash} != {hash_new}")
+        log.error(f"Reverting {len(self.addr_hist)} addresses.")
+
+        for addr_hist in self.addr_hist:
+            addr_hist.on_fork(db)
+
+        height = self.height
+
+        db.Session.delete(self)
+        # Deletes all related addr_hist and user_addr_hist.
+        db.Session.commit()
+
+        log.error(f"Re-processing block #{self.height}")
+
+        Block.make(
+            db=db,
+            height=height,
+            chain_height=-1,
+            block_hash=hash_new
+        )
+
+    def update_confirmations(self, db: DB):
         try:
-            conf = db.rpc.getblockheader(blockhash=self.hash).confirmations
+            block_header = db.rpc.getblockheader(blockhash=self.hash)
         except BaseRPC.Exception as exc:
             log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
-            return False
+            return
+
+        if self.hash != block_header.hash:
+            self.on_fork(db, block_header.hash)
+            return
+
+        conf = block_header.confirmations
 
         if conf >= Block.CONF_MATURE:
 
@@ -191,12 +222,6 @@ class Block(Base):
                 log.error(
                     f"Block.update_confirmations(post-commit): Got SQL error '{exc}', not trying again.", exc_info=exc
                 )
-
-            # Use new behavior of commiting and error-checking per-block while
-            # maintaining the same behavior and expectatons of the calling function.
-            return False
-
-        return False
 
     def update_confirmations_post_commit(self, db: DB) -> bool:
         """Called after bulk commit when update_confirmations() returned True.
@@ -240,23 +265,8 @@ class Block(Base):
             ).all()
 
             try:
-                updated = []
-
                 for block in blocks:
-                    if block.update_confirmations(db):
-                        updated.append(block)
-
-                if len(updated):
-                    db.Session.commit()
-
-                    deleted = False
-
-                    for block in updated:
-                        db.Session.refresh(block)
-                        deleted |= block.update_confirmations_post_commit(db)
-
-                    if deleted:
-                        db.Session.commit()
+                    block.update_confirmations(db)
 
                 break
 
@@ -285,10 +295,10 @@ class Block(Base):
             return Block.make(db, height)
 
     @staticmethod
-    def make(db: DB, height: int, chain_height: int) -> Optional[Block]:
+    def make(db: DB, height: int, chain_height: int, block_hash: Optional[str] = None) -> Optional[Block]:
         while 1:
             try:
-                bhash = db.rpc.getblockhash(height)
+                bhash = db.rpc.getblockhash(height) if block_hash is None else block_hash
 
                 # noinspection PyArgumentList
                 new_block: Block = Block(
@@ -300,7 +310,7 @@ class Block(Base):
                     db.Session.add(new_block)
                     db.Session.commit()
                     db.Session.refresh(new_block)
-                    log.info(f"Processed block #{new_block.height}  hist: {len(new_block.addr_hist)}")
+                    log.info(f"Processed block #{new_block.height}  chain: {chain_height}  hist: {len(new_block.addr_hist)}")
 
                     try:
                         db.api.sse_block_notify_create(block_pk=new_block.pkid)

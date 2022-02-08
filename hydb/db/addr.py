@@ -93,7 +93,12 @@ class Addr(Base):
 
         self.update_info(db)
 
-        addr_hist: AddrHist = AddrHist(block=block, addr=self, info_old=info_old, info_new=self.info)
+        addr_hist: AddrHist = AddrHist(
+            block=block,
+            addr=self,
+            info_old=info_old,
+            info_new=self.info
+        )
 
         db.Session.add(addr_hist)
 
@@ -107,6 +112,11 @@ class Addr(Base):
             return self.update_info(db)
 
         return False
+
+    def on_fork(self, db: DB, addr_hist: AddrHist):
+        self.block_h = addr_hist.block.height
+        self.info = addr_hist.info_old
+        db.Session.add(self)
 
     def update_info(self, db: DB) -> bool:
         block_height: int = db.rpc.getblockcount()

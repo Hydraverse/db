@@ -49,6 +49,13 @@ class AddrHist(Base):
         db.Session.add(self)
         db.Session.commit()
 
+    def on_fork(self, db: DB):
+
+        self.addr.on_fork(db, self)
+
+        for user_hist in self.addr_hist_user:
+            user_hist.on_fork(db)
+
     def _removed_user(self, db: DB):
         if not len(self.addr_hist_user):
             log.info(f"Deleting Block #{self.block.height} history for {self.addr.addr_tp} address with no users.")
