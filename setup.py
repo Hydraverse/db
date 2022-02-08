@@ -30,6 +30,10 @@ setup(
         "pydantic",
         "sseclient-py",
         "deepdiff",
+        "aiocache",
+        "ujson",
+        "msgpack",
+
     ],
     extras_require={
         "client": [],
@@ -43,7 +47,6 @@ setup(
             "sse-starlette",
             "uvicorn[standard]",
             "cryptography",
-            "aiocache",
         ]
     },
     # entry_points={
