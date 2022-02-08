@@ -386,6 +386,9 @@ class Block(Base):
 
     def __get_block_info(self, db: DB):
         while 1:
+            if self.hash is None:
+                self.hash = db.rpc.getblockhash(self.height)
+
             info = db.rpcx.get_block(self.height)
 
             if isinstance(info, str):
@@ -394,9 +397,10 @@ class Block(Base):
                 continue
 
             if info.height != self.height or info.hash != self.hash:
-                log.warning(f"Block info mismatch at height {self.height}/{self.hash} != {info.height}/{info.hash}")
-                self.height = info.height
-                self.hash = info.hash
+                log.warning(f"Block info mismatch at height {self.height}/{self.hash} != {info.height}/{info.hash} -- retrying in 10s.")
+                self.hash = None
+                time.sleep(10)
+                continue
 
             del info.hash
             del info.height
