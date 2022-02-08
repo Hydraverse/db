@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import time
 from typing import Optional
 
+from hydra import log
 from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_, Table, Interval, desc
 from sqlalchemy.orm import relationship
 
@@ -49,7 +51,16 @@ class Stat(StatBase, Base):
 
     def __init__(self, db: DB, block: Block):
 
-        info = db.rpc.getinfo()
+        while 1:
+            info = db.rpc.getinfo()
+
+            if int(info.moneysupply) == 0 or int(info.burnedcoins) == 0:
+                log.warning("Hydra RPC getinfo() returnd zero values, retrying.")
+                time.sleep(1)
+                continue
+
+            break
+
         mining_info = db.rpc.getmininginfo()
 
         apr = db.rpc.getestimatedannualroi()
