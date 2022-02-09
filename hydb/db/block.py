@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from typing import Optional, List
 
 import sqlalchemy.orm.exc
@@ -133,7 +134,7 @@ class Block(Base):
                 db.Session.commit()
                 db.Session.refresh(stat)
 
-                log.info(f"Added stat #{stat.pkid} for block #{self.height} @ {stat.time}")
+                log.info(f"STAT #{stat.pkid} BLK #{self.height} @ {stat.time} / {datetime.now()}")
 
         except sqlalchemy.exc.SQLAlchemyError as exc:
             log.warning(f"Exception while adding new Stat entry: {exc}", exc_info=exc)
