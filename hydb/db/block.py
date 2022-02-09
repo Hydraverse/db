@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import time
-from datetime import datetime
 from typing import Optional, List
 
 import sqlalchemy.orm.exc
@@ -134,7 +133,7 @@ class Block(Base):
                 db.Session.commit()
                 db.Session.refresh(stat)
 
-                log.info(f"STAT #{stat.pkid} BLK #{self.height} @ {stat.time}")
+                log.info(f"Stat #{stat.pkid} Block #{self.height}")
 
         except sqlalchemy.exc.SQLAlchemyError as exc:
             log.warning(f"Exception while adding new Stat entry: {exc}", exc_info=exc)
@@ -405,14 +404,14 @@ class Block(Base):
             info = db.rpcx.get_block(self.height)
 
             if isinstance(info, str):
-                log.warning("get_block_info(): Explorer seems under maintenance, trying again in 10s.")
-                time.sleep(10)
+                log.warning("get_block_info(): Explorer seems under maintenance, trying again in 30s.")
+                time.sleep(30)
                 continue
 
             if info.height != self.height or info.hash != self.hash:
-                log.warning(f"Block info mismatch at height {self.height}/{self.hash} != {info.height}/{info.hash} -- retrying in 10s.")
+                log.warning(f"Block info mismatch at height {self.height}/{self.hash} != {info.height}/{info.hash} -- retrying in 60s.")
                 self.hash = None
-                time.sleep(10)
+                time.sleep(60)
                 continue
 
             del info.hash
