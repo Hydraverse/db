@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+from datetime import datetime
 from decimal import Decimal
 from typing import Optional
 
@@ -68,6 +69,7 @@ class Stat(StatBase, Base):
 
         # noinspection PyArgumentList
         super().__init__(
+            time=datetime.utcnow(),
             apr=apr,
             blocks=info.blocks,
             connections=info.connections,
