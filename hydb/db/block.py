@@ -171,14 +171,16 @@ class Block(Base):
         )
 
     def update_confirmations(self, db: DB):
+        block_hash = db.rpc.getblockhash(self.height)
+
+        if self.hash != block_hash:
+            self.on_fork(db, block_hash)
+            return
+
         try:
             block_header = db.rpc.getblockheader(blockhash=self.hash)
         except BaseRPC.Exception as exc:
             log.warning(f"Block call to getblockheader() failed: {exc}", exc_info=exc)
-            return
-
-        if self.hash != block_header.hash:
-            self.on_fork(db, block_header.hash)
             return
 
         conf = block_header.confirmations
