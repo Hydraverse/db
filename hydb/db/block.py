@@ -133,7 +133,7 @@ class Block(Base):
                 db.Session.commit()
                 db.Session.refresh(stat)
 
-                log.info(f"Added stat #{stat.pkid} for block #{self.height}")
+                log.info(f"Added stat #{stat.pkid} for block #{self.height} @ {stat.time}")
 
         except sqlalchemy.exc.SQLAlchemyError as exc:
             log.warning(f"Exception while adding new Stat entry: {exc}", exc_info=exc)
