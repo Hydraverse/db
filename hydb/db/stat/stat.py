@@ -22,7 +22,7 @@ class Stat(StatBase, Base):
         Integer, Sequence("stat_seq", metadata=StatBase.metadata), nullable=False, primary_key=True, unique=True
     )
 
-    time = Column(DateTime, default=func.now(), nullable=False, unique=True, index=True)
+    time = Column(DateTime, server_default=func.now(), nullable=False, unique=True, index=True)
 
     apr = Column(Numeric, nullable=False)
     blocks = Column(Integer, nullable=False)
