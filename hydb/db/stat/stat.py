@@ -8,6 +8,7 @@ from typing import Optional
 from hydra import log
 from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_, Table, Interval, desc
 from sqlalchemy.orm import relationship
+from sqlalchemy.exc import NoResultFound
 
 from .base import *
 from .block import BlockStat
@@ -185,5 +186,8 @@ class StatQuantView1d(StatBase, Base):
     }
 
     @staticmethod
-    def get(db: DB) -> StatQuantView1d:
-        return db.Session.query(StatQuantView1d).one()
+    def get(db: DB) -> Optional[StatQuantView1d]:
+        try:
+            return db.Session.query(StatQuantView1d).one()
+        except NoResultFound:
+            return None

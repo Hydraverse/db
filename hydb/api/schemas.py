@@ -91,7 +91,7 @@ class StatQuant(Stat):
 
 class Stats(BaseModel):
     current: Stat
-    quant_stat_1d: StatQuant
+    quant_stat_1d: Optional[StatQuant]
     quant_net_weight: StatQuantNetWeight
 
     class Config:
