@@ -87,7 +87,10 @@ class DB:
 
         log.debug(f"db: open url='{self.url}'")
         self.engine = create_engine(self.url)
-        self.Session = scoped_session(sessionmaker(bind=self.engine))
+        self.Session = scoped_session(sessionmaker(
+            bind=self.engine,
+            expire_on_commit=False
+        ))
 
         Base.metadata.create_all(self.engine)
         StatBase.metadata.create_all(self.engine)
