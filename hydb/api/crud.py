@@ -14,7 +14,7 @@ def server_info(db: DB) -> schemas.ServerInfo:
 
 
 def user_map(db: DB) -> schemas.UserMap:
-    users: List[models.User] = db.Session.query(
+    users: List[models.User] = db.session.query(
         models.User
     ).all()
 
@@ -27,7 +27,7 @@ def user_map(db: DB) -> schemas.UserMap:
 
 
 def user_get_by_tgid(db: DB, tg_user_id: int) -> Optional[models.User]:
-    return db.Session.query(
+    return db.session.query(
         models.User
     ).where(
         models.User.tg_user_id == tg_user_id
@@ -35,7 +35,7 @@ def user_get_by_tgid(db: DB, tg_user_id: int) -> Optional[models.User]:
 
 
 def user_get_by_pkid(db: DB, user_pk: int) -> Optional[models.User]:
-    return db.Session.query(
+    return db.session.query(
         models.User
     ).where(
         models.User.pkid == user_pk
@@ -47,7 +47,7 @@ def user_add(db: DB, user_create: schemas.UserCreate) -> models.User:
 
 
 def user_del(db: DB, user_pk: int):
-    u: models.User = db.Session.query(
+    u: models.User = db.session.query(
         models.User
     ).where(
         models.User.pkid == user_pk
@@ -61,7 +61,7 @@ def user_info_update(db: DB, user: models.User, update: schemas.UserInfoUpdate) 
 
 
 def user_addr_get(db: DB, user_pk: int, user_addr_pk: int) -> Optional[models.UserAddr]:
-    return db.Session.query(
+    return db.session.query(
         models.UserAddr,
     ).where(
         and_(
@@ -114,8 +114,8 @@ def user_addr_update(db: DB, user_addr: models.UserAddr, addr_update: schemas.Us
                 updated = True
 
     if updated:
-        db.Session.add(user_addr)
-        db.Session.commit()
+        db.session.add(user_addr)
+        db.session.commit()
 
     return schemas.UserAddrUpdate.Result(
         updated=updated
@@ -152,7 +152,7 @@ def user_addr_token_del(db: DB, user_addr: models.UserAddr, address: str) -> sch
 
 
 def block_get(db: DB, block_pk: int) -> Optional[schemas.Block]:
-    return db.Session.query(
+    return db.session.query(
         models.Block
     ).where(
         models.Block.pkid == block_pk
@@ -165,15 +165,15 @@ def sse_event_add(db: DB, event: str, data: schemas.BaseModel) -> models.Event:
         data=data.json(encoder=str)
     )
 
-    db.Session.add(ev)
-    db.Session.commit()
-    db.Session.refresh(ev)
+    db.session.add(ev)
+    db.session.commit()
+    db.session.refresh(ev)
     return ev
 
 
 def block_sse_result(db: DB, block: models.Block, event: schemas.SSEBlockEvent) -> schemas.BlockSSEResult:
     return schemas.BlockSSEResult(
-        id=(db.Session.query(func.max(models.Event.pkid)).scalar() or 0) + 1,  # Best guess, but monoticity is all we really need here.
+        id=(db.session.query(func.max(models.Event.pkid)).scalar() or 0) + 1,  # Best guess, but monoticity is all we really need here.
         event=event,
         block=block,
         hist=models.AddrHist.all_for_block(db, block)

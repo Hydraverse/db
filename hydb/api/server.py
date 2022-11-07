@@ -3,9 +3,9 @@ from typing import Optional
 from fastapi import FastAPI, Depends, HTTPException, APIRouter, Request
 from sse_starlette.sse import EventSourceResponse
 from sqlalchemy import and_
+import uvicorn
 
 from hydra import log
-log.log_set(log.INFO)
 
 from ..db import DB
 
@@ -16,6 +16,11 @@ from . import crud
 
 app: FastAPI = FastAPI()
 dbase: DB = DB()
+
+
+def main():
+    log.log_set(log.INFO)
+    uvicorn.run("hydb.api.server:app", host="127.0.0.1", port=8000, log_level="info")
 
 
 @app.get("/")
@@ -34,17 +39,18 @@ def server_info():
 
 
 @app.get("/stats", response_model=schemas.Stats)
-def stats_get(db: DB = Depends(dbase.yield_with_session)):
+def stats_get(db: DB = Depends(dbase.sessioned)):
     stats = crud.stats_get(db)
 
     if stats is None:
+        # TODO: Make sure this is processed properly by client.
         raise HTTPException(status_code=404, detail="No stats yet.")
 
     return stats
 
 
 @app.get("/sse/block/{block_pk}/{block_ev}")
-def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Depends(dbase.yield_with_session)):
+def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Depends(dbase.sessioned)):
     block: models.Block = crud.block_get(db=db, block_pk=block_pk)
 
     if block is None:
@@ -60,7 +66,7 @@ def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Dep
 
 
 @app.router.get('/sse/block')
-async def sse_block(request: Request, db: DB = Depends(dbase.yield_with_session)):
+async def sse_block(request: Request, db: DB = Depends(dbase.sessioned)):
     event_generator = EventManager.block_event_generator(
         db=db,
         request=request
@@ -70,7 +76,7 @@ async def sse_block(request: Request, db: DB = Depends(dbase.yield_with_session)
 
 
 @app.router.get('/sse/block/next')
-async def sse_block_next(request: Request, db: DB = Depends(dbase.yield_with_session)):
+async def sse_block_next(request: Request, db: DB = Depends(dbase.sessioned)):
     event_generator = EventManager.block_event_generator(
         db=db,
         request=request,
@@ -81,12 +87,12 @@ async def sse_block_next(request: Request, db: DB = Depends(dbase.yield_with_ses
 
 
 @app.get("/u/map", response_model=schemas.UserMap)
-def user_map(db: DB = Depends(dbase.yield_with_session)):
+def user_map(db: DB = Depends(dbase.sessioned)):
     return crud.user_map(db)
 
 
 @app.post("/u/", response_model=schemas.User)
-def user_add(user_create: schemas.UserCreate, db: DB = Depends(dbase.yield_with_session)):
+def user_add(user_create: schemas.UserCreate, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_tgid(db, user_create.tg_user_id)
 
     if db_user:
@@ -96,7 +102,7 @@ def user_add(user_create: schemas.UserCreate, db: DB = Depends(dbase.yield_with_
 
 
 @app.delete("/u/{user_pk}")
-def user_del(user_pk: int, user_delete: schemas.UserDelete, db: DB = Depends(dbase.yield_with_session)):
+def user_del(user_pk: int, user_delete: schemas.UserDelete, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
     if db_user is None:
@@ -109,7 +115,7 @@ def user_del(user_pk: int, user_delete: schemas.UserDelete, db: DB = Depends(dba
 
 
 @app.get("/u/{user_pk}", response_model=schemas.User)
-def user_get(user_pk: int, db: DB = Depends(dbase.yield_with_session)):
+def user_get(user_pk: int, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
     if db_user is None:
@@ -119,7 +125,7 @@ def user_get(user_pk: int, db: DB = Depends(dbase.yield_with_session)):
 
 
 @app.get("/u/tg/{tg_user_id}", response_model=schemas.User)
-def user_get_tg(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
+def user_get_tg(tg_user_id: int, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_tgid(db, tg_user_id)
 
     if db_user is None:
@@ -129,7 +135,7 @@ def user_get_tg(tg_user_id: int, db: DB = Depends(dbase.yield_with_session)):
 
 
 @app.put("/u/{user_pk}/info", response_model=schemas.UserInfoUpdate.Result)
-def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB = Depends(dbase.yield_with_session)):
+def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
     if db_user is None:
@@ -143,12 +149,12 @@ def user_info_put(user_pk: int, user_info_update: schemas.UserInfoUpdate, db: DB
 
 
 @app.get("/u/{user_pk}/a/{user_addr_pk}", response_model=Optional[schemas.UserAddrFull])
-def user_addr_get(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_with_session)):
+def user_addr_get(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.sessioned)):
     return crud.user_addr_get(db=db, user_pk=user_pk, user_addr_pk=user_addr_pk)
 
 
 @app.post("/u/{user_pk}/a/", response_model=schemas.UserAddr)
-def user_addr_add(user_pk: int, addr_add: schemas.UserAddrAdd, db: DB = Depends(dbase.yield_with_session)):
+def user_addr_add(user_pk: int, addr_add: schemas.UserAddrAdd, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
     if db_user is None:
@@ -158,8 +164,8 @@ def user_addr_add(user_pk: int, addr_add: schemas.UserAddrAdd, db: DB = Depends(
 
 
 @app.patch("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.UserAddrUpdate.Result)
-def user_addr_upd(user_pk: int, user_addr_pk: int, user_addr_update: schemas.UserAddrUpdate, db: DB = Depends(dbase.yield_with_session)):
-    user_addr: models.UserAddr = db.Session.query(
+def user_addr_upd(user_pk: int, user_addr_pk: int, user_addr_update: schemas.UserAddrUpdate, db: DB = Depends(dbase.sessioned)):
+    user_addr: models.UserAddr = db.session.query(
         models.UserAddr
     ).where(
         and_(
@@ -179,7 +185,7 @@ def user_addr_upd(user_pk: int, user_addr_pk: int, user_addr_update: schemas.Use
 
 
 @app.delete("/u/{user_pk}/a/{user_addr_pk}", response_model=schemas.DeleteResult)
-def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_with_session)):
+def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.sessioned)):
     db_user = crud.user_get_by_pkid(db, user_pk)
 
     if db_user is None:
@@ -189,8 +195,8 @@ def user_addr_del(user_pk: int, user_addr_pk: int, db: DB = Depends(dbase.yield_
 
 
 @app.post("/u/{user_pk}/a/{user_addr_pk}/t", response_model=schemas.UserAddrTokenAdd.Result)
-def user_addr_token_add(user_pk: int, user_addr_pk: int, addr_token_add: schemas.UserAddrTokenAdd, db: DB = Depends(dbase.yield_with_session)):
-    user_addr: models.UserAddr = db.Session.query(
+def user_addr_token_add(user_pk: int, user_addr_pk: int, addr_token_add: schemas.UserAddrTokenAdd, db: DB = Depends(dbase.sessioned)):
+    user_addr: models.UserAddr = db.session.query(
         models.UserAddr
     ).where(
         and_(
@@ -206,8 +212,8 @@ def user_addr_token_add(user_pk: int, user_addr_pk: int, addr_token_add: schemas
 
 
 @app.delete("/u/{user_pk}/a/{user_addr_pk}/t/{address}", response_model=schemas.DeleteResult)
-def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = Depends(dbase.yield_with_session)):
-    user_addr: models.UserAddr = db.Session.query(
+def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = Depends(dbase.sessioned)):
+    user_addr: models.UserAddr = db.session.query(
         models.UserAddr
     ).where(
         and_(
@@ -227,3 +233,6 @@ def user_addr_token_del(user_pk: int, user_addr_pk: int, address: str, db: DB = 
 # def read_users(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
 #     users = crud.get_users(db, skip=skip, limit=limit)
 #     return users
+
+if __name__ == '__main__':
+    main()

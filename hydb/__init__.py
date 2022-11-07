@@ -1,3 +1,5 @@
 """A database for tracking blockchain data from the Hydra Chain.
 """
-VERSION = "1.4.2"
+import importlib.metadata
+
+__version__ = importlib.metadata.version("hydra-chain-db")

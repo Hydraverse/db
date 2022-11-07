@@ -36,7 +36,7 @@ class Event(Base):
                 log.warning("event_after_insert(): target is None.")
                 return
 
-            @sa_event.listens_for(db.Session, 'after_flush', once=True)
+            @sa_event.listens_for(db.session, 'after_flush', once=True)
             def event_after_insert_flush(session, flush_context):
                 Event._insert_listener_call(session, target, callback)
 
@@ -65,7 +65,7 @@ class Event(Base):
 
     @staticmethod
     def claim_all_for(db: DB, event: str, claimant: str, limit: Optional[int] = None) -> List[Event]:
-        q = db.Session.query(
+        q = db.session.query(
             Event
         ).filter(
             and_(
@@ -87,16 +87,16 @@ class Event(Base):
             for event in events:
                 event.claim_for(claimant)
 
-            db.Session.commit()
+            db.session.commit()
 
             for event in events:
-                db.Session.refresh(event)
+                db.session.refresh(event)
 
         return events
 
     @staticmethod
     def unclaimed_for(db: DB, claimant: str) -> List[Event]:
-        return db.Session.query(
+        return db.session.query(
             Event
         ).filter(
             not_(

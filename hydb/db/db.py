@@ -1,8 +1,11 @@
 from __future__ import annotations
 
+from contextlib import contextmanager
+from typing import Optional
+
 from attrdict import AttrDict
 from sqlalchemy import create_engine
-from sqlalchemy.orm import sessionmaker, scoped_session
+from sqlalchemy.orm import sessionmaker, scoped_session, Session
 from cryptography.fernet import Fernet
 import asyncio
 
@@ -15,9 +18,10 @@ from hydb.util.conf import Config
 
 @Config.defaults
 class DB:
-    _ = None
     engine = None
-    Session: scoped_session
+    _Session: scoped_session
+    _in_session: Optional[Session]
+    _in_session_refcount: int = 0
     rpc: HydraRPC
     api = None  # type: HyDbClient
     url: str
@@ -87,10 +91,11 @@ class DB:
 
         log.debug(f"db: open url='{self.url}'")
         self.engine = create_engine(self.url)
-        self.Session = scoped_session(sessionmaker(
+        self._Session = scoped_session(sessionmaker(
             bind=self.engine,
             expire_on_commit=False
         ))
+        self._in_session = None
 
         Base.metadata.create_all(self.engine)
         StatBase.metadata.create_all(self.engine)
@@ -148,35 +153,27 @@ class DB:
 
             UserUniq.check_wallet_addrs(self)
 
-    class WithSession:
-        db: DB
+    @property
+    def session(self) -> Optional[scoped_session]:
+        return self._Session if self._in_session else None
 
-        def __init__(self, db: DB):
-            self.db = db
+    def sessioned(self):
+        with self.with_session():
+            yield self
 
-        def __enter__(self):
-            self.db.Session()
-            DB._ = self.db
-            return self.db
-
-        def __exit__(self, exc_type, exc_val, exc_tb):
-            DB._ = None
-            self.db.Session.remove()
-
-    @staticmethod
-    def current_session() -> scoped_session:
-        return DB._.Session if DB._ is not None else None
-
+    @contextmanager
     def with_session(self):
-        return DB.WithSession(self)
+        self._in_session_refcount += 1
+        if self._in_session_refcount == 1:
+            self._in_session = self._Session()
 
-    def yield_with_session(self):
-        with self.with_session() as db:
-            yield db
-
-    def yield_session(self):
-        with self.with_session() as db:
-            yield db.Session
+        try:
+            yield self._Session
+        finally:
+            self._in_session_refcount -= 1
+            if self._in_session_refcount == 0:
+                self._Session.remove()
+                self._in_session = None
 
     def in_session(self, fn, *args, **kwds):
         with self.with_session():

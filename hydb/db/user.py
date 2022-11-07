@@ -49,7 +49,7 @@ class User(Base):
     @staticmethod
     def get_pkid(db: DB, tg_user_id: int) -> Optional[int]:
         u = (
-            db.Session.query(
+            db.session.query(
                 User.pkid
             ).filter(
                 User.tg_user_id == tg_user_id
@@ -61,7 +61,7 @@ class User(Base):
     @staticmethod
     def get(db: DB, tg_user_id: int, create: bool = False) -> Optional[User]:
 
-        u: User = db.Session.query(
+        u: User = db.session.query(
             User
         ).filter(
             User.tg_user_id == tg_user_id
@@ -77,12 +77,12 @@ class User(Base):
             uniq = UserUniq(db)
 
             try:
-                db.Session.add(uniq)
-                db.Session.commit()
-                db.Session.refresh(uniq)
+                db.session.add(uniq)
+                db.session.commit()
+                db.session.refresh(uniq)
                 break
             except IntegrityError:
-                db.Session.rollback()
+                db.session.rollback()
                 log.error("User unique PKID name clash! Trying again.")
                 continue
 
@@ -92,9 +92,9 @@ class User(Base):
             tg_user_id=tg_user_id,
         )
 
-        db.Session.add(user_)
-        db.Session.commit()
-        db.Session.refresh(user_)
+        db.session.add(user_)
+        db.session.commit()
+        db.session.refresh(user_)
 
         return user_
 
@@ -102,14 +102,14 @@ class User(Base):
     def on_verified_block(self, db: DB, user_addr: UserAddr):
         # TODO: More detailed recording here.
         self.info["block_c"] = self.info.get("block_c", 0) + 1
-        db.Session.add(self)
+        db.session.add(self)
 
     def on_block(self, db: DB, user_addr: UserAddr):
         pass
 
     @staticmethod
     def delete_by_id(db: DB, tg_user_id: int) -> None:
-        u: User = db.Session.query(User).where(
+        u: User = db.session.query(User).where(
             User.tg_user_id == tg_user_id,
         ).one_or_none()
 
@@ -120,8 +120,8 @@ class User(Base):
         for user_addr in list(self.user_addrs):
             user_addr._remove(db, self.user_addrs)
 
-        db.Session.delete(self)
-        db.Session.commit()
+        db.session.delete(self)
+        db.session.commit()
 
     def addr_name_available(self, name: str) -> bool:
         return name not in [ua.name for ua in self.user_addrs]
@@ -142,9 +142,9 @@ class User(Base):
                 changed = True
 
         if changed:
-            db.Session.add(self)
-            db.Session.commit()
-            db.Session.refresh(self)
+            db.session.add(self)
+            db.session.commit()
+            db.session.refresh(self)
 
         return schemas.UserInfoUpdate.Result(updated=changed)
 
@@ -152,7 +152,7 @@ class User(Base):
         return UserAddr.get(db=db, user=self, address=address, create=create)
 
     def addr_del(self, db: DB, user_addr_pk: int) -> bool:
-        ua: Optional[UserAddr] = db.Session.query(
+        ua: Optional[UserAddr] = db.session.query(
             UserAddr
         ).where(
             UserAddr.pkid == user_addr_pk
@@ -160,7 +160,7 @@ class User(Base):
 
         if ua is not None:
             ua._remove(db, self.user_addrs)
-            db.Session.commit()
+            db.session.commit()
             return True
 
         return False

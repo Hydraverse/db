@@ -6,7 +6,8 @@ from decimal import Decimal
 from typing import Optional
 
 from hydra import log
-from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_, Table, Interval, desc
+from sqlalchemy import Column, Integer, Numeric, SmallInteger, Sequence, func, DateTime, and_, Table, Interval, desc, \
+    text
 from sqlalchemy.orm import relationship
 from sqlalchemy.exc import NoResultFound
 
@@ -87,7 +88,7 @@ class Stat(StatBase, Base):
 
     @staticmethod
     def exists_for_block(db: DB, block: Block) -> bool:
-        return 1 == db.Session.query(
+        return 1 == db.session.query(
 
             func.count(BlockStat.pkid)
 
@@ -101,7 +102,7 @@ class Stat(StatBase, Base):
 
     @staticmethod
     def current(db: DB) -> Optional[Stat]:
-        return db.Session.query(Stat).order_by(desc(Stat.pkid)).limit(1).one_or_none()
+        return db.session.query(Stat).order_by(desc(Stat.pkid)).limit(1).one_or_none()
 
 
 class StatQuantNetWeightView(StatBase, Base):
@@ -122,6 +123,7 @@ class StatQuantNetWeightView(StatBase, Base):
             WHERE stat."time" > (now()::timestamp without time zone - '1 mon'::interval))    AS median_1m;
     """
     __tablename__ = "quant_net_weight"
+    # __abstract__ = True
 
     count = Column(Integer, default=0)
 
@@ -135,8 +137,8 @@ class StatQuantNetWeightView(StatBase, Base):
     }
 
     @staticmethod
-    def get(db: DB) -> StatQuantNetWeightView:
-        return db.Session.query(StatQuantNetWeightView).one()
+    def get(db: DB) -> Optional[StatQuantNetWeightView]:
+        return db.session.query(StatQuantNetWeightView).one_or_none()
 
 
 class StatQuantView1d(StatBase, Base):
@@ -162,6 +164,7 @@ class StatQuantView1d(StatBase, Base):
     WHERE stat."time" > (now()::timestamp without time zone - '1 day'::interval);
     """
     __tablename__ = "quant_stat_1d"
+    # __abstract__ = True
 
     pkid = Column(Integer,  primary_key=True)
 
@@ -187,7 +190,4 @@ class StatQuantView1d(StatBase, Base):
 
     @staticmethod
     def get(db: DB) -> Optional[StatQuantView1d]:
-        try:
-            return db.Session.query(StatQuantView1d).one()
-        except NoResultFound:
-            return None
+        return db.session.query(StatQuantView1d).one_or_none()

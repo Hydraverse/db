@@ -46,8 +46,8 @@ class AddrHist(Base):
         self.info_old = self.info_new
         self.info_new = self.addr.info
 
-        db.Session.add(self)
-        db.Session.commit()
+        db.session.add(self)
+        db.session.commit()
 
     def on_fork(self, db: DB):
 
@@ -68,7 +68,7 @@ class AddrHist(Base):
 
     @staticmethod
     def all_for_block(db: DB, block: Block) -> List[AddrHist]:
-        ahs: List[AddrHist] = db.Session.query(
+        ahs: List[AddrHist] = db.session.query(
             AddrHist
         ).where(
             AddrHist.block_pk == block.pkid,

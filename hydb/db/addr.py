@@ -100,7 +100,7 @@ class Addr(Base):
             info_new=self.info
         )
 
-        db.Session.add(addr_hist)
+        db.session.add(addr_hist)
 
         for addr_user in self.addr_users:
             addr_user.on_new_addr_hist(db, addr_hist)
@@ -116,7 +116,7 @@ class Addr(Base):
     def on_fork(self, db: DB, addr_hist: AddrHist):
         self.block_h = addr_hist.block.height
         self.info = addr_hist.info_old
-        db.Session.add(self)
+        db.session.add(self)
 
     def update_info(self, db: DB) -> bool:
         block_height: int = db.rpc.getblockcount()
@@ -148,7 +148,7 @@ class Addr(Base):
 
         if self.info is None or DeepDiff(dict(self.info), dict(info)):
             self.info = info
-            db.Session.add(self)
+            db.session.add(self)
             return True
 
         return False
@@ -196,8 +196,8 @@ class Addr(Base):
 
     def __on_new_addr(self, db: DB):
         self.update_info(db)
-        db.Session.commit()
-        db.Session.refresh(self)
+        db.session.commit()
+        db.session.refresh(self)
 
     def _removed_user(self, db: DB):
         if not len(self.addr_users):
@@ -205,7 +205,7 @@ class Addr(Base):
                 addr_hist._remove(db, self.addr_hist)
 
             log.info(f"Deleting {self.addr_tp.value} address with no users.")
-            db.Session.delete(self)
+            db.session.delete(self)
         else:
             for addr_hist in list(self.addr_hist):
                 addr_hist._removed_user(db)
@@ -215,7 +215,7 @@ class Addr(Base):
         addr_tp, addr_hx, addr_hy, _ = Addr.normalize(db, address)
 
         try:
-            q = db.Session.query(Addr).where(
+            q = db.session.query(Addr).where(
                 Addr.addr_hx == addr_hx
             )
 

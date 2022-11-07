@@ -1,0 +1,47 @@
+version: "3.8"
+
+
+services:
+
+  postgres-dev:
+    hostname: postgres-dev
+    container_name: hydb-postgres-dev
+    image: ${REGISTRY:-$COMPOSE_PROJECT_NAME:}postgres-dev
+    build: services/database/postgres
+    networks:
+      - dev
+    ports:
+      - "5432:5432"
+    volumes:
+      - hydb-postgres-dev:/var/lib/postgresql/data
+    env_file:
+      - environments/dev/postgres.env
+    environment:
+      - POSTGRES_PASSWORD_FILE=/run/secrets/postgres-dev
+    secrets:
+      - postgres-dev
+    profiles:
+      - dev
+
+
+networks:
+  core:
+    name: hydb-core
+  dev:
+    name: hydb-dev
+
+
+secrets:
+  postgres-dev:
+    file: ./environments/dev/postgres.pwd
+
+  postgres-prod:
+    file: ./environments/prod/postgres.pwd
+
+
+volumes:
+  hydb-postgres-dev:
+    name: hydb-postgres-dev
+
+  hydb-postgres:
+    name: hydb-postgres

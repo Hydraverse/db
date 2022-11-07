@@ -1,0 +1,45 @@
+[tool.poetry]
+name = "hydra-chain-db"
+version = "2.0.0"
+description = "A database for tracking blockchain data from the Hydra Chain."
+authors = [
+    "Phillip Sitbon <phillip.sitbon@gmail.com>",
+    "Halospace Foundation <contact@halospace.org>",
+]
+readme = "README.md"
+repository = "https://github.com/hydraverse/db"
+homepage = "https://pypi.org/project/hydra-chain-db/"
+documentation = "https://hydraverse.github.io/db/"
+
+packages = [
+    { include = "hydb" },
+]
+
+[tool.poetry.scripts]
+hydb-blk = "hydb.blk:BlockUpdaterApp.main"
+hydb-api = "hydb.api.server:main"
+
+[tool.poetry.dependencies]
+python = "^3.10"
+hydra-chain-py = "^2.7.6"
+pyyaml = "^6.0"
+sseclient-py = "^1.7.2"
+deepdiff = "^6.2.1"
+ujson = "^5.5.0"
+msgpack = "^1.0.4"
+aiocache = "^0.11.1"
+
+[tool.poetry.group.server.dependencies]
+namemaker = "^1.1.2"
+sqlalchemy = "^1.4.43"
+sqlalchemy-json = "^0.5.0"
+psycopg2-binary = "^2.9.5"
+alembic = {extras = ["tz"], version = "^1.8.1"}
+fastapi = "^0.86.0"
+sse-starlette = "^1.1.6"
+uvicorn = {extras = ["standard"], version = "^0.19.0"}
+cryptography = "^38.0.3"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

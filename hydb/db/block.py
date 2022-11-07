@@ -48,12 +48,12 @@ class Block(Base):
         single_parent=True,
     )
 
-    CONF_MATURE = 501
+    CONF_MATURE = 2001
 
     def _removed_hist(self, db: DB):
         if not len(self.addr_hist):
             log.info(f"Deleting block #{self.height} with no history.")
-            db.Session.delete(self)
+            db.session.delete(self)
 
     def on_new_block(self, db: DB, chain_height: int) -> bool:
         info, txes = None, None
@@ -95,7 +95,7 @@ class Block(Base):
 
         from .addr import Addr
 
-        addrs: List[Addr] = db.Session.query(
+        addrs: List[Addr] = db.session.query(
             Addr,
         ).where(
             and_(
@@ -129,9 +129,9 @@ class Block(Base):
             if not Stat.exists_for_block(db, self):
                 stat = Stat(db=db, block=self)
 
-                db.Session.add(stat)
-                db.Session.commit()
-                db.Session.refresh(stat)
+                db.session.add(stat)
+                db.session.commit()
+                db.session.refresh(stat)
 
                 log.info(f"Stat #{stat.pkid} Block #{self.height}")
 
@@ -157,9 +157,9 @@ class Block(Base):
 
         height = self.height
 
-        db.Session.delete(self)
+        db.session.delete(self)
         # Deletes all related addr_hist and user_addr_hist.
-        db.Session.commit()
+        db.session.commit()
 
         log.error(f"Re-processing block #{self.height}")
 
@@ -194,8 +194,8 @@ class Block(Base):
                     for addr_hist in self.addr_hist:
                         addr_hist.on_update_conf(db)
 
-                    db.Session.add(self)
-                    db.Session.commit()
+                    db.session.add(self)
+                    db.session.commit()
 
                     break
 
@@ -204,10 +204,10 @@ class Block(Base):
                         f"Block.update_confirmations(): Got SQL error '{exc}', trying again.", exc_info=exc
                     )
 
-                    db.Session.rollback()
+                    db.session.rollback()
 
                     try:
-                        db.Session.refresh(self)
+                        db.session.refresh(self)
                         continue
                     except sqlalchemy.exc.SQLAlchemyError as exc:
                         log.error(
@@ -218,7 +218,7 @@ class Block(Base):
 
             try:
                 if self.update_confirmations_post_commit(db):
-                    db.Session.commit()
+                    db.session.commit()
 
             except sqlalchemy.exc.SQLAlchemyError as exc:
                 log.error(
@@ -233,7 +233,7 @@ class Block(Base):
 
         if self.conf > Block.CONF_MATURE or not len(self.addr_hist):
             log.debug(f"Delete over-mature block #{self.height} with {self.conf} confirmations and {len(self.addr_hist)} hist entries.")
-            db.Session.delete(self)
+            db.session.delete(self)
             return True
 
         if self.conf == Block.CONF_MATURE:  # Decision: Only process when timing is right, to enable self deletion.
@@ -260,7 +260,7 @@ class Block(Base):
         """Update confirmations on stored blocks.
         """
         while 1:
-            blocks: List[Block] = db.Session.query(
+            blocks: List[Block] = db.session.query(
                 Block
             ).order_by(
                 asc(Block.height)
@@ -277,13 +277,13 @@ class Block(Base):
                     f"Block.update_confirmations_all(): Got SQL error '{exc}', trying again.", exc_info=exc
                 )
 
-                db.Session.rollback()
+                db.session.rollback()
                 continue
 
     @staticmethod
     def get(db: DB, height: int, create: Optional[bool] = True) -> Optional[Block]:
         try:
-            block = db.Session.query(
+            block = db.session.query(
                 Block,
             ).where(
                 Block.height == height,
@@ -309,9 +309,9 @@ class Block(Base):
                 )
 
                 if new_block.on_new_block(db, chain_height):
-                    db.Session.add(new_block)
-                    db.Session.commit()
-                    db.Session.refresh(new_block)
+                    db.session.add(new_block)
+                    db.session.commit()
+                    db.session.refresh(new_block)
                     log.info(f"Processed block #{new_block.height}  chain: {chain_height}  hist: {len(new_block.addr_hist)}")
 
                     try:
@@ -329,39 +329,40 @@ class Block(Base):
 
             except sqlalchemy.orm.exc.StaleDataError as exc:
                 log.error("Block.make(): Got StaleDataError when attempting to create new block, trying again.", exc_info=exc)
-                db.Session.rollback()
+                db.session.rollback()
                 continue
             except sqlalchemy.exc.SQLAlchemyError as exc:
                 log.error(f"Block.make(): Got SQL error {exc}, trying again.", exc_info=exc)
-                db.Session.rollback()
+                db.session.rollback()
                 continue
             except BaseRPC.Exception as exc:
                 log.error("Block.make(): RPC error, trying again.", exc_info=exc)
-                db.Session.rollback()
+                db.session.rollback()
                 continue
 
             log.debug(f"Discarding block without history entries at height {new_block.height}")
-            db.Session.rollback()
+            db.session.rollback()
             break
 
     @staticmethod
     def update_task(db: DB) -> None:
         try:
-            Block.__update_init(db)
+            with db.with_session():
+                Block.__update_init(db)
 
-            Block.update_confirmations_all(db)
+                Block.update_confirmations_all(db)
 
-            while 1:
-                if Block.update(db):
-                    Block.update_confirmations_all(db)
-                time.sleep(1)
+                while 1:
+                    if Block.update(db):
+                        Block.update_confirmations_all(db)
+                    time.sleep(1)
 
         except KeyboardInterrupt:
             pass
 
     @staticmethod
     def __update_init(db: DB) -> None:
-        block: Block = db.Session.query(
+        block: Block = db.session.query(
             Block
         ).order_by(
             desc(Block.height)

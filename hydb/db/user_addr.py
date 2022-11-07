@@ -55,8 +55,8 @@ class UserAddr(Base):
 
         if addr_tp in (Addr.Type.T, Addr.Type.N) and addr_hx not in self.token_l:
             self.token_l.append(addr_hx)
-            db.Session.add(self)
-            db.Session.commit()
+            db.session.add(self)
+            db.session.commit()
             addr_info.added = True
 
         return addr_info
@@ -71,8 +71,8 @@ class UserAddr(Base):
             return False
 
         self.token_l.remove(addr_hx)
-        db.Session.add(self)
-        db.Session.commit()
+        db.session.add(self)
+        db.session.commit()
         return True
 
     def on_new_addr_hist(self, db: DB, addr_hist: AddrHist):
@@ -83,7 +83,7 @@ class UserAddr(Base):
             block_c=self.block_c,
         )
 
-        db.Session.add(user_addr_hist)
+        db.session.add(user_addr_hist)
 
         if addr_hist.mined:
             self.block_t = datetime.utcfromtimestamp(addr_hist.block.info.get("timestamp"))
@@ -94,7 +94,7 @@ class UserAddr(Base):
             else:
                 self.user.on_block(db, self)
 
-            db.Session.add(self)
+            db.session.add(self)
 
     def addr_hist_del(self, db: DB, user_addr_hist_pk: int) -> bool:
         for uah in self.user_addr_hist:
@@ -112,12 +112,12 @@ class UserAddr(Base):
     def on_fork(self, db: DB, user_addr_hist: UserAddrHist):
         self.block_c = user_addr_hist.block_c
         self.block_t = user_addr_hist.block_t
-        db.Session.add(self)
+        db.session.add(self)
 
     @staticmethod
     def get_by_addr(db: DB, user, addr: Addr, create: Union[bool, str] = True) -> Optional[UserAddr]:
         try:
-            q = db.Session.query(UserAddr).where(
+            q = db.session.query(UserAddr).where(
                 and_(
                     UserAddr.user_pk == user.pkid,
                     UserAddr.addr_pk == addr.pkid,
@@ -146,14 +146,14 @@ class UserAddr(Base):
                 else:
                     break
 
-            db.Session.add(ua)
-            db.Session.commit()
-            db.Session.refresh(ua)
+            db.session.add(ua)
+            db.session.commit()
+            db.session.refresh(ua)
             return ua
 
     @staticmethod
     def get_by_addr_pk(db: DB, user, addr_pk: int, create=True) -> Optional[UserAddr]:
-        addr: Addr = db.Session.query(
+        addr: Addr = db.session.query(
             Addr
         ).where(
             Addr.pkid == addr_pk

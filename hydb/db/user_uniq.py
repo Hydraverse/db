@@ -37,7 +37,7 @@ class UserUniq(Base):
 
     # noinspection PyUnusedLocal
     def __init__(self, db: DB):
-        names = [row.name for row in db.Session.query(UserUniq.name).all()]
+        names = [row.name for row in db.session.query(UserUniq.name).all()]
 
         while 1:
             ts_ns = td_ns = time_ns()
@@ -85,9 +85,10 @@ class UserUniq(Base):
 
     @staticmethod
     def check_wallet_addrs(db: DB):
-        users: List[UserUniq] = db.Session.query(
-            UserUniq
-        ).all()
+        with db.with_session():
+            users: List[UserUniq] = db.session.query(
+                UserUniq
+            ).all()
 
         labels = db.rpc.listlabels()
 

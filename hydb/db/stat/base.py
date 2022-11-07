@@ -5,5 +5,5 @@ from hydb.db.base import *
 
 __all__ = "Base", "StatBase",
 
-
+# TODO: cls=Base ??
 StatBase = declarative_base(metadata=MetaData(schema="stat"))

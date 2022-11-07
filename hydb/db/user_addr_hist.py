@@ -47,7 +47,7 @@ class UserAddrHist(Base):
 
     @staticmethod
     def all_for_block(db: DB, block: Block) -> List[UserAddrHist]:
-        uahs: List[UserAddrHist] = db.Session.query(
+        uahs: List[UserAddrHist] = db.session.query(
             UserAddrHist
         ).join(
             AddrHist,
