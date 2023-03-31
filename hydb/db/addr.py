@@ -338,4 +338,4 @@ class Addr(Base):
 
     @staticmethod
     def __sc_out_str(val):
-        return binascii.unhexlify(val).replace(b"\x00", b"").decode("utf-8")
+        return binascii.unhexlify(val).replace(b"\x00", b"").decode("utf-8", errors="ignore")
