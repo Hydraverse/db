@@ -294,7 +294,7 @@ class Block(Base):
 
             return block.one()
         except NoResultFound:
-            return Block.make(db, height)
+            return Block.make(db, height) # TODO FIX
 
     @staticmethod
     def make(db: DB, height: int, chain_height: int, block_hash: Optional[str] = None) -> Optional[Block]:
