@@ -271,7 +271,7 @@ class AddrBase(BaseModel):
     pkid: int
     addr_hx: str
     addr_hy: str
-    addr_tp: EnumModel[Type]
+    addr_tp: EnumModel[AddrBase.Type]
     block_h: int
 
     class Config:
@@ -285,7 +285,7 @@ class AddrBase(BaseModel):
         return filter(lambda tx: addr_match(list(Block.tx_yield_addrs(tx))), block.tx)
 
     @staticmethod
-    def soft_validate(address: str, testnet: Optional[bool] = None) -> Optional[Type]:
+    def soft_validate(address: str, testnet: Optional[bool] = None) -> Optional[AddrBase.Type]:
         length = len(address)
 
         if not address.isalnum():
@@ -326,6 +326,9 @@ class Addr(AddrBase):
 
     class Config:
         orm_mode = True
+
+
+Addr.update_forward_refs(localns=locals())
 
 
 class UserUniq(BaseModel):
