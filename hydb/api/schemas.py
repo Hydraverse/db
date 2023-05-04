@@ -10,6 +10,8 @@ from attrdict import AttrDict
 from pydantic import BaseModel, root_validator
 from pydantic.generics import GenericModel
 
+from hydb.db.stat.chain import ChainStat
+
 _DecimalNew = Union[Decimal, float, str, Tuple[int, Sequence[int], int]]
 
 
@@ -94,6 +96,11 @@ class Stats(BaseModel):
     quant_stat_1d: Optional[StatQuant]
     quant_net_weight: Optional[StatQuantNetWeight]
 
+    class Config:
+        orm_mode = True
+
+
+class ChainInfo(ChainStat, BaseModel):
     class Config:
         orm_mode = True
 

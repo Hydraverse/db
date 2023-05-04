@@ -54,12 +54,19 @@ class HyDbClient(BaseRPC):
     def stats(self) -> schemas.Stats:
         return schemas.Stats(**self.get("/stats"))
 
+    def info(self) -> schemas.ChainInfo:
+        return schemas.ChainInfo(**self.get("/info"))
+
     def user_map(self) -> schemas.UserMap:
         return schemas.UserMap(**self.get("/u/map"))
 
     @cached(ttl=60, key="stats_cache")
     async def stats_cache(self) -> schemas.Stats:
         return await self.asyncc.stats()
+
+    @cached(ttl=10, key="info_cache")
+    async def info_cache(self) -> schemas.ChainInfo:
+        return await self.asyncc.info()
 
     def sse_block_notify_create(self, block_pk: int) -> None:
         self.get(

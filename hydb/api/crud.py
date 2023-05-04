@@ -1,4 +1,4 @@
-import json
+import sys
 from typing import Optional, List
 
 from deepdiff import DeepDiff
@@ -199,3 +199,10 @@ def stats_get(db: DB) -> Optional[schemas.Stats]:
         quant_stat_1d=models.StatQuantView1d.get(db),
         quant_net_weight=models.StatQuantNetWeightView.get(db)
     )
+
+
+def info_get(db: DB) -> Optional[schemas.ChainInfo]:
+    try:
+        return schemas.ChainInfo.get(db.rpc)
+    except Exception as ex:
+        print(ex, file=sys.stderr)

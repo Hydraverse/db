@@ -49,6 +49,16 @@ def stats_get(db: DB = Depends(dbase.sessioned)):
     return stats
 
 
+@app.get("/info", response_model=schemas.ChainInfo)
+def info_get(db: DB = Depends(dbase.sessioned)):
+    info = crud.info_get(db)
+
+    if info is None:
+        raise HTTPException(status_code=404, detail="No info available.")
+
+    return info
+
+
 @app.get("/sse/block/{block_pk}/{block_ev}")
 def db_notify_block(block_pk: int, block_ev: schemas.SSEBlockEvent, db: DB = Depends(dbase.sessioned)):
     block: models.Block = crud.block_get(db=db, block_pk=block_pk)
