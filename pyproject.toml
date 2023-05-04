@@ -27,7 +27,7 @@ sseclient-py = "^1.7.2"
 deepdiff = "^6.2.1"
 ujson = "^5.5.0"
 msgpack = "^1.0.4"
-aiocache = "^0.11.1"
+aiocache = "^0.12"
 
 [tool.poetry.group.server.dependencies]
 namemaker = "^1.1.2"
