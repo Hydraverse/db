@@ -1,9 +1,11 @@
+from __future__ import annotations
+
 import decimal
 import string
 from datetime import datetime, timedelta
 import enum
 from decimal import Decimal
-from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Self, Sequence
+from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequence
 
 import pytz
 from attrdict import AttrDict
@@ -117,7 +119,7 @@ class ChainInfo(BaseModel):
     net_diff_pow: Decimal
 
     @classmethod
-    def get(cls, rpc: HydraRPC) -> Self:
+    def get(cls, rpc: HydraRPC) -> ChainInfo:
         info = rpc.getinfo()
 
         apr = rpc.getestimatedannualroi()
