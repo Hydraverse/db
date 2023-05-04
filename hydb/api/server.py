@@ -14,12 +14,13 @@ from hydb.event.events import EventManager
 from .crud import models, schemas
 from . import crud
 
+log.log_set(log.INFO)
+
 app: FastAPI = FastAPI()
 dbase: DB = DB()
 
 
 def main():
-    log.log_set(log.INFO)
     uvicorn.run("hydb.api.server:app", host="127.0.0.1", port=8000, log_level="info")
 
 
