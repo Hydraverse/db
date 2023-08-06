@@ -9,7 +9,7 @@ from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequenc
 
 import pytz
 from attrdict import AttrDict
-from pydantic import BaseModel, BaseModel as GenericModel, model_validator
+from pydantic import BaseModel, model_validator, ConfigDict
 
 from hydra.rpc import HydraRPC
 
@@ -51,22 +51,30 @@ def timedelta_str(td: timedelta) -> str:
     )
 
 
-class UserMap(BaseModel):
+class Parent(BaseModel):
+    model_config = ConfigDict(
+        use_enum_values=True,
+        validate_assignment=True,
+        populate_by_name=True,
+        arbitrary_types_allowed=True,
+        from_attributes=True,
+        defer_build=True,
+    )
+
+
+class UserMap(Parent):
     map: Dict[int, int]
 
 
-class StatQuantNetWeight(BaseModel):
+class StatQuantNetWeight(Parent):
     count: int
     median_1h: Optional[Decimal]
     median_1d: Optional[Decimal]
     median_1w: Optional[Decimal]
     median_1m: Optional[Decimal]
 
-    class Config:
-        orm_mode = True
 
-
-class Stat(BaseModel):
+class Stat(Parent):
     pkid: int
     time: datetime
     apr: Decimal
@@ -81,27 +89,18 @@ class Stat(BaseModel):
     net_diff_pos: Decimal
     net_diff_pow: Decimal
 
-    class Config:
-        orm_mode = True
-
 
 class StatQuant(Stat):
     time: timedelta
 
-    class Config:
-        orm_mode = True
 
-
-class Stats(BaseModel):
+class Stats(Parent):
     current: Stat
     quant_stat_1d: Optional[StatQuant]
     quant_net_weight: Optional[StatQuantNetWeight]
 
-    class Config:
-        orm_mode = True
 
-
-class ChainInfo(BaseModel):
+class ChainInfo(Parent):
     time: datetime
     apr: Decimal
     blocks: int
@@ -141,24 +140,20 @@ class ChainInfo(BaseModel):
         )
 
 
-class ServerInfo(BaseModel):
+class ServerInfo(Parent):
     mainnet: bool
 
 
-class UpdateResult(BaseModel):
+class UpdateResult(Parent):
     updated: bool
 
 
 EnumTypeVar = TypeVar("EnumTypeVar")
 
 
-class EnumModel(GenericModel, Generic[EnumTypeVar]):
+class EnumModel(Parent, Generic[EnumTypeVar]):
     value: EnumTypeVar
     possible_values: List[str] = []
-
-    class Config:
-        validate_assignment = True
-        orm_mode = True
 
     @model_validator(mode="before")
     def root_validate(cls, values):
@@ -166,16 +161,13 @@ class EnumModel(GenericModel, Generic[EnumTypeVar]):
         return values
 
 
-class Block(BaseModel):
+class Block(Parent):
     pkid: int
     height: int
     hash: str
     conf: int
     info: AttrDict
     tx: List[AttrDict]
-
-    class Config:
-        orm_mode = True
 
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(Block.tx_yield_addrs(tx)), self.tx)
@@ -241,7 +233,7 @@ class Block(BaseModel):
                 yield a
 
 
-class AddrHistBase(BaseModel):
+class AddrHistBase(Parent):
     pkid: int
     addr_pk: int
     block_pk: int
@@ -249,18 +241,12 @@ class AddrHistBase(BaseModel):
     info_new: AttrDict
     mined: bool
 
-    class Config:
-        orm_mode = True
-
 
 class AddrHist(AddrHistBase):
     block: Block
 
-    class Config:
-        orm_mode = True
 
-
-class AddrBase(BaseModel):
+class AddrBase(Parent):
     class Type(str, enum.Enum):
         H = "HYDRA"
         S = "smart contract"
@@ -272,9 +258,6 @@ class AddrBase(BaseModel):
     addr_hy: str
     addr_tp: EnumModel[AddrBase.Type]
     block_h: int
-
-    class Config:
-        orm_mode = True
 
     def __str__(self):
         return self.addr_hy if self.addr_tp.value == Addr.Type.H else self.addr_hx
@@ -323,14 +306,11 @@ class AddrBase(BaseModel):
 class Addr(AddrBase):
     info: AttrDict
 
-    class Config:
-        orm_mode = True
+
+Addr.model_rebuild(force=True)  # TODO: Determine whether this is still necessary.
 
 
-Addr.update_forward_refs(localns=locals())
-
-
-class UserUniq(BaseModel):
+class UserUniq(Parent):
     pkid: int
     date_create: datetime
     date_update: Optional[datetime]
@@ -339,27 +319,21 @@ class UserUniq(BaseModel):
     name: str
     hyve_addr_hy: str
 
-    class Config:
-        orm_mode = True
 
-
-class UserCreate(BaseModel):
+class UserCreate(Parent):
     tg_user_id: int
 
 
-class UserDelete(BaseModel):
+class UserDelete(Parent):
     tg_user_id: int
 
 
-class UserBase(BaseModel):
+class UserBase(Parent):
     uniq: UserUniq
 
     tg_user_id: int
 
     info: AttrDict
-
-    class Config:
-        orm_mode = True
 
     def user_time(self, dt: datetime):
         tz_name = self.info.get("tz", "UTC")
@@ -368,7 +342,7 @@ class UserBase(BaseModel):
         return pytz.utc.localize(dt, is_dst=None).astimezone(tz_user)
 
 
-class UserAddrHistBase(BaseModel):
+class UserAddrHistBase(Parent):
     pkid: int
     user_addr_pk: int
     addr_hist_pk: int
@@ -377,18 +351,12 @@ class UserAddrHistBase(BaseModel):
     block_c: int
     data: Optional[AttrDict]
 
-    class Config:
-        orm_mode = True
-
 
 class UserAddrHist(UserAddrHistBase):
     addr_hist: AddrHist
 
-    class Config:
-        orm_mode = True
 
-
-class UserAddrBase(BaseModel):
+class UserAddrBase(Parent):
     pkid: int
     user_pk: int
     addr_pk: int
@@ -400,9 +368,6 @@ class UserAddrBase(BaseModel):
     token_l: List[str]
     info: AttrDict
     data: Optional[AttrDict]
-
-    class Config:
-        orm_mode = True
 
     def filter_info_token_balances(self, info: dict):
         return filter(
@@ -436,9 +401,6 @@ class UserAddrBase(BaseModel):
 class UserAddr(UserAddrBase):
     addr: Addr
 
-    class Config:
-        orm_mode = True
-
     def filter_addr_token_balances(self):
         return self.filter_info_token_balances(self.addr.info)
 
@@ -455,16 +417,13 @@ class UserAddrFull(UserAddr):
     # - Unused so far:
     # user_addr_hist: List[UserAddrHistBase]
 
-    class Config:
-        orm_mode = True
 
-
-class UserAddrAdd(BaseModel):
+class UserAddrAdd(Parent):
     address: str
     name: Optional[str]
 
 
-class UserAddrUpdate(BaseModel):
+class UserAddrUpdate(Parent):
     name: Optional[str]
     info: Optional[AttrDict]
     data: Optional[AttrDict]
@@ -489,10 +448,10 @@ class UserAddrUpdate(BaseModel):
         )
 
 
-class UserAddrTokenAdd(BaseModel):
+class UserAddrTokenAdd(Parent):
     address: str
 
-    class Result(BaseModel):
+    class Result(Parent):
         added: bool
         addr_tp: EnumModel[Addr.Type]
         addr_hx: str
@@ -506,9 +465,6 @@ class UserAddrTokenAdd(BaseModel):
 class User(UserBase):
     user_addrs: List[UserAddr]
 
-    class Config:
-        orm_mode = True
-
     def find_addr(self, address: str, *, allow_names: bool = False) -> Optional[UserAddr]:
         for ua in self.user_addrs:
             if ua.matches(address, allow_name=allow_names):
@@ -521,11 +477,11 @@ class User(UserBase):
         )
 
 
-class DeleteResult(BaseModel):
+class DeleteResult(Parent):
     deleted: bool
 
 
-class UserInfoUpdate(BaseModel):
+class UserInfoUpdate(Parent):
     info: AttrDict
     over: bool
 
@@ -536,23 +492,14 @@ class UserInfoUpdate(BaseModel):
 class UserAddrResult(UserAddrBase):
     user: UserBase
 
-    class Config:
-        orm_mode = True
-
 
 class UserAddrHistResult(UserAddrHistBase):
     user_addr: UserAddrResult
-
-    class Config:
-        orm_mode = True
 
 
 class AddrHistResult(AddrHistBase):
     addr: AddrBase
     addr_hist_user: List[UserAddrHistResult]
-
-    class Config:
-        orm_mode = True
 
 
 class SSEBlockEvent(str, enum.Enum):
@@ -560,11 +507,9 @@ class SSEBlockEvent(str, enum.Enum):
     mature = "mature"
 
 
-class BlockSSEResult(BaseModel):
+class BlockSSEResult(Parent):
     id: int
     event: SSEBlockEvent
     block: Block
     hist: List[AddrHistResult]
 
-    class Config:
-        orm_mode = True
