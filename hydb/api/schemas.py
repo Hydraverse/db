@@ -13,6 +13,39 @@ from pydantic import BaseModel, ConfigDict
 
 from hydra.rpc import HydraRPC
 
+__all__ = (
+    "timedelta_str",
+    "UserMap",
+    "StatQuantNetWeight",
+    "Stat",
+    "StatQuant",
+    "ChainInfo",
+    "ServerInfo",
+    "UpdateResult",
+    "Block",
+    "AddrHist",
+    "AddrBase",
+    "Addr",
+    "UserUniq",
+    "UserCreate",
+    "UserDelete",
+    "UserBase",
+    "UserAddrHist",
+    "UserAddr",
+    "UserAddrFull",
+    "UserAddrAdd",
+    "UserAddrUpdate",
+    "UserAddrTokenAdd",
+    "User",
+    "DeleteResult",
+    "UserInfoUpdate",
+    "UserAddrResult",
+    "UserAddrHistResult",
+    "AddrHistResult",
+    "SSEBlockEvent",
+    "BlockSSEResult",
+)
+
 _DecimalNew = Decimal | float | str | tuple[int, Sequence[int], int]
 
 
@@ -60,6 +93,9 @@ class Parent(BaseModel):
         from_attributes=True,
         defer_build=True,
     )
+
+    def dict(self, **kwds):
+        return super().model_dump(mode="python", **kwds)
 
 
 class UserMap(Parent):
