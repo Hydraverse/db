@@ -190,8 +190,8 @@ class Block(Parent):
     height: int
     hash: str
     conf: int
-    info: AttrDict
-    tx: list[AttrDict]
+    info: AttrDict | dict
+    tx: list[AttrDict | dict]
 
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(Block.tx_yield_addrs(tx)), self.tx)
@@ -261,8 +261,8 @@ class AddrHistBase(Parent):
     pkid: int
     addr_pk: int
     block_pk: int
-    info_old: AttrDict
-    info_new: AttrDict
+    info_old: AttrDict | dict
+    info_new: AttrDict | dict
     mined: bool
 
 
@@ -328,7 +328,7 @@ class AddrBase(Parent):
 
 
 class Addr(AddrBase):
-    info: AttrDict
+    info: AttrDict | dict
 
 
 Addr.model_rebuild(force=True)  # TODO: Determine whether this is still necessary.
@@ -357,7 +357,7 @@ class UserBase(Parent):
 
     tg_user_id: int
 
-    info: AttrDict
+    info: AttrDict | dict
 
     def user_time(self, dt: datetime):
         tz_name = self.info.get("tz", "UTC")
@@ -373,7 +373,7 @@ class UserAddrHistBase(Parent):
     date_create: datetime
     block_t: datetime | None
     block_c: int
-    data: AttrDict | None
+    data: AttrDict | dict | None
 
 
 class UserAddrHist(UserAddrHistBase):
@@ -390,8 +390,8 @@ class UserAddrBase(Parent):
     block_t: datetime | None
     block_c: int
     token_l: list[str]
-    info: AttrDict
-    data: AttrDict | None
+    info: AttrDict | dict
+    data: AttrDict | dict | None
 
     def filter_info_token_balances(self, info: dict):
         return filter(
@@ -449,8 +449,8 @@ class UserAddrAdd(Parent):
 
 class UserAddrUpdate(Parent):
     name: str | None
-    info: AttrDict | None
-    data: AttrDict | None
+    info: AttrDict | dict | None
+    data: AttrDict | dict | None
     over: bool | None
 
     class Result(UpdateResult):
@@ -506,7 +506,7 @@ class DeleteResult(Parent):
 
 
 class UserInfoUpdate(Parent):
-    info: AttrDict
+    info: AttrDict | dict
     over: bool
 
     class Result(UpdateResult):
