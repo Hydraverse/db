@@ -23,7 +23,7 @@ class DB:
     _in_session: Optional[Session]
     _in_session_refcount: int = 0
     rpc: HydraRPC
-    api = None  # type: HyDbClient
+    api = None  # type: hydb.api.client.HyDbClient
     url: str
     wallet: str
     passphrase: str
@@ -209,3 +209,5 @@ __all__ = (
     __event_all__ +
     __stat_all__
 )
+
+# __all__ = [n for n in globals() if n[:1] != '_']

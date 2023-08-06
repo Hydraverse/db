@@ -58,18 +58,17 @@ trio = ["trio (<0.22)"]
 
 [[package]]
 name = "argcomplete"
-version = "2.1.2"
+version = "3.1.1"
 description = "Bash tab completion for argparse"
 optional = false
 python-versions = ">=3.6"
 files = [
-    {file = "argcomplete-2.1.2-py3-none-any.whl", hash = "sha256:4ba9cdaa28c361d251edce884cd50b4b1215d65cdc881bd204426cdde9f52731"},
-    {file = "argcomplete-2.1.2.tar.gz", hash = "sha256:fc82ef070c607b1559b5c720529d63b54d9dcf2dcfc2632b10e6372314a34457"},
+    {file = "argcomplete-3.1.1-py3-none-any.whl", hash = "sha256:35fa893a88deea85ea7b20d241100e64516d6af6d7b0ae2bed1d263d26f70948"},
+    {file = "argcomplete-3.1.1.tar.gz", hash = "sha256:6c4c563f14f01440aaffa3eae13441c5db2357b5eec639abe7c0b15334627dff"},
 ]
 
 [package.extras]
-lint = ["flake8", "mypy"]
-test = ["coverage", "flake8", "mypy", "pexpect", "wheel"]
+test = ["coverage", "mypy", "pexpect", "ruff", "wheel"]
 
 [[package]]
 name = "attrdict3"
@@ -510,24 +509,28 @@ test = ["Cython (>=0.29.24,<0.30.0)"]
 
 [[package]]
 name = "hydra-chain-py"
-version = "2.7.6"
+version = "2.8.0"
 description = "Hydra Chain Tools & Application Library."
 optional = false
-python-versions = ">=3.10,<4.0"
-files = [
-    {file = "hydra_chain_py-2.7.6-py3-none-any.whl", hash = "sha256:a0f9ccdbc4e7e72a2a8e54373d0cd9f3decca49350f8beb02d48c0417a25a96e"},
-    {file = "hydra_chain_py-2.7.6.tar.gz", hash = "sha256:db187f03c5bb01652c705676f3522f772b7024f70e6d5b39a730064be5335425"},
-]
+python-versions = "^3.11"
+files = []
+develop = false
 
 [package.dependencies]
-argcomplete = ">=2.0.0,<3.0.0"
-attrdict3 = ">=2.0.2,<3.0.0"
-currencies = ">=2020.12.12,<2021.0.0"
-pycryptodome = ">=3.15.0,<4.0.0"
-pytest = ">=7.2.0,<8.0.0"
-python-kucoin = ">=2.1.3,<3.0.0"
-pytz = ">=2022.6,<2023.0"
-requests = ">=2.28.1,<3.0.0"
+argcomplete = "^3.1.1"
+attrdict3 = "^2.0.2"
+currencies = "^2020.12.12"
+pycryptodome = "^3.15.0"
+pytest = "^7.4.0"
+python-kucoin = "^2.1.3"
+pytz = "^2023.3"
+requests = "^2.28.1"
+
+[package.source]
+type = "git"
+url = "https://github.com/hydraverse/hypy"
+reference = "HEAD"
+resolved_reference = "046d2eb1471132224e833b507fef45144316e581"
 
 [[package]]
 name = "idna"
@@ -990,13 +993,13 @@ websockets = "*"
 
 [[package]]
 name = "pytz"
-version = "2022.7.1"
+version = "2023.3"
 description = "World timezone definitions, modern and historical"
 optional = false
 python-versions = "*"
 files = [
-    {file = "pytz-2022.7.1-py2.py3-none-any.whl", hash = "sha256:78f4f37d8198e0627c5f1143240bb0206b8691d8d7ac6d78fee88b78733f8c4a"},
-    {file = "pytz-2022.7.1.tar.gz", hash = "sha256:01a0681c4b9684a28304615eba55d1ab31ae00bf68ec157ec3708a8182dbbcd0"},
+    {file = "pytz-2023.3-py2.py3-none-any.whl", hash = "sha256:a151b3abb88eda1d4e34a9814df37de2a80e301e68ba0fd856fb9b46bfbbbffb"},
+    {file = "pytz-2023.3.tar.gz", hash = "sha256:1d8ce29db189191fb55338ee6d0387d82ab59f3d00eac103412d64e0ebd0c588"},
 ]
 
 [[package]]
@@ -1501,4 +1504,4 @@ files = [
 [metadata]
 lock-version = "2.0"
 python-versions = "^3.11"
-content-hash = "858a32c6f0bae69b38dc43a18c8166f8bb78029c53fb1c726461d2b262534231"
+content-hash = "cfea18505517764bf37dfa049e772ba4f61156f4f9eb4e0684872929a1111e93"
