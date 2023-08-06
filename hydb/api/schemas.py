@@ -9,8 +9,7 @@ from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequenc
 
 import pytz
 from attrdict import AttrDict
-from pydantic import BaseModel, root_validator
-from pydantic.generics import GenericModel
+from pydantic import BaseModel, BaseModel as GenericModel, model_validator
 
 from hydra.rpc import HydraRPC
 
@@ -161,7 +160,7 @@ class EnumModel(GenericModel, Generic[EnumTypeVar]):
         validate_assignment = True
         orm_mode = True
 
-    @root_validator
+    @model_validator(mode="before")
     def root_validate(cls, values):
         values["possible_values"] = [item for item in values['value'].__class__]
         return values
