@@ -87,11 +87,12 @@ def timedelta_str(td: timedelta) -> str:
 class Parent(BaseModel):
     model_config = ConfigDict(
         use_enum_values=True,
-        validate_assignment=True,
+        validate_assignment=False,
         populate_by_name=True,
         arbitrary_types_allowed=True,
         from_attributes=True,
         defer_build=True,
+        strict=False,
     )
 
     def dict(self, **kwds):
