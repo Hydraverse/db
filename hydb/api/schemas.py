@@ -5,15 +5,15 @@ import string
 from datetime import datetime, timedelta
 import enum
 from decimal import Decimal
-from typing import Optional, List, Generic, TypeVar, Dict, Union, Tuple, Sequence
+from typing import Sequence
 
 import pytz
 from attrdict import AttrDict
-from pydantic import BaseModel, model_validator, ConfigDict
+from pydantic import BaseModel, ConfigDict
 
 from hydra.rpc import HydraRPC
 
-_DecimalNew = Union[Decimal, float, str, Tuple[int, Sequence[int], int]]
+_DecimalNew = Decimal | float | str | tuple[int, Sequence[int], int]
 
 
 def timedelta_str(td: timedelta) -> str:
@@ -63,15 +63,15 @@ class Parent(BaseModel):
 
 
 class UserMap(Parent):
-    map: Dict[int, int]
+    map: dict[int, int]
 
 
 class StatQuantNetWeight(Parent):
     count: int
-    median_1h: Optional[Decimal]
-    median_1d: Optional[Decimal]
-    median_1w: Optional[Decimal]
-    median_1m: Optional[Decimal]
+    median_1h: Decimal | None
+    median_1d: Decimal | None
+    median_1w: Decimal | None
+    median_1m: Decimal | None
 
 
 class Stat(Parent):
@@ -96,8 +96,8 @@ class StatQuant(Stat):
 
 class Stats(Parent):
     current: Stat
-    quant_stat_1d: Optional[StatQuant]
-    quant_net_weight: Optional[StatQuantNetWeight]
+    quant_stat_1d: StatQuant | None
+    quant_net_weight: StatQuantNetWeight | None
 
 
 class ChainInfo(Parent):
@@ -148,26 +148,13 @@ class UpdateResult(Parent):
     updated: bool
 
 
-EnumTypeVar = TypeVar("EnumTypeVar")
-
-
-class EnumModel(Parent, Generic[EnumTypeVar]):
-    value: EnumTypeVar
-    possible_values: List[str] = []
-
-    @model_validator(mode="before")
-    def root_validate(cls, values):
-        values["possible_values"] = [item for item in values['value'].__class__]
-        return values
-
-
 class Block(Parent):
     pkid: int
     height: int
     hash: str
     conf: int
     info: AttrDict
-    tx: List[AttrDict]
+    tx: list[AttrDict]
 
     def filter_tx(self, address: str):
         return filter(lambda tx: address in list(Block.tx_yield_addrs(tx)), self.tx)
@@ -256,7 +243,7 @@ class AddrBase(Parent):
     pkid: int
     addr_hx: str
     addr_hy: str
-    addr_tp: EnumModel[AddrBase.Type]
+    addr_tp: Addr.Type
     block_h: int
 
     def __str__(self):
@@ -267,7 +254,7 @@ class AddrBase(Parent):
         return filter(lambda tx: addr_match(list(Block.tx_yield_addrs(tx))), block.tx)
 
     @staticmethod
-    def soft_validate(address: str, testnet: Optional[bool] = None) -> Optional[AddrBase.Type]:
+    def soft_validate(address: str, testnet: bool | None = None) -> AddrBase.Type | None:
         length = len(address)
 
         if not address.isalnum():
@@ -288,8 +275,8 @@ class AddrBase(Parent):
             return None
 
         if base == 36:
-            if testnet is True  and address[0].lower() != 't' or \
-               testnet is False and address[0].lower() != 'h':
+            if (testnet is True and address[0].lower() != 't' or
+               testnet is False and address[0].lower() != 'h'):
                 return None
 
         return (
@@ -313,7 +300,7 @@ Addr.model_rebuild(force=True)  # TODO: Determine whether this is still necessar
 class UserUniq(Parent):
     pkid: int
     date_create: datetime
-    date_update: Optional[datetime]
+    date_update: datetime | None
     time_create: int
     name_weight: int
     name: str
@@ -347,9 +334,9 @@ class UserAddrHistBase(Parent):
     user_addr_pk: int
     addr_hist_pk: int
     date_create: datetime
-    block_t: Optional[datetime]
+    block_t: datetime | None
     block_c: int
-    data: Optional[AttrDict]
+    data: AttrDict | None
 
 
 class UserAddrHist(UserAddrHistBase):
@@ -361,13 +348,13 @@ class UserAddrBase(Parent):
     user_pk: int
     addr_pk: int
     date_create: datetime
-    date_update: Optional[datetime]
+    date_update: datetime | None
     name: str
-    block_t: Optional[datetime]
+    block_t: datetime | None
     block_c: int
-    token_l: List[str]
+    token_l: list[str]
     info: AttrDict
-    data: Optional[AttrDict]
+    data: AttrDict | None
 
     def filter_info_token_balances(self, info: dict):
         return filter(
@@ -376,7 +363,7 @@ class UserAddrBase(Parent):
             + info.get("qrc721Balances", [])
         )
 
-    def likely_matches(self, address: str, addr: Optional[AddrBase] = None) -> bool:
+    def likely_matches(self, address: str, addr: AddrBase | None = None) -> bool:
         if not address:
             return False
 
@@ -415,19 +402,19 @@ class UserAddrFull(UserAddr):
     user: UserBase
 
     # - Unused so far:
-    # user_addr_hist: List[UserAddrHistBase]
+    # user_addr_hist: list[UserAddrHistBase]
 
 
 class UserAddrAdd(Parent):
     address: str
-    name: Optional[str]
+    name: str | None
 
 
 class UserAddrUpdate(Parent):
-    name: Optional[str]
-    info: Optional[AttrDict]
-    data: Optional[AttrDict]
-    over: Optional[bool]
+    name: str | None
+    info: AttrDict | None
+    data: AttrDict | None
+    over: bool | None
 
     class Result(UpdateResult):
         pass
@@ -453,19 +440,19 @@ class UserAddrTokenAdd(Parent):
 
     class Result(Parent):
         added: bool
-        addr_tp: EnumModel[Addr.Type]
+        addr_tp: Addr.Type
         addr_hx: str
         addr_hy: str
-        name: Optional[str]
-        symbol: Optional[int]
-        totalSupply: Optional[int]
-        decimals: Optional[int]
+        name: str | None
+        symbol: int | None
+        totalSupply: int | None
+        decimals: int | None
 
 
 class User(UserBase):
-    user_addrs: List[UserAddr]
+    user_addrs: list[UserAddr]
 
-    def find_addr(self, address: str, *, allow_names: bool = False) -> Optional[UserAddr]:
+    def find_addr(self, address: str, *, allow_names: bool = False) -> UserAddr | None:
         for ua in self.user_addrs:
             if ua.matches(address, allow_name=allow_names):
                 return ua
@@ -499,7 +486,7 @@ class UserAddrHistResult(UserAddrHistBase):
 
 class AddrHistResult(AddrHistBase):
     addr: AddrBase
-    addr_hist_user: List[UserAddrHistResult]
+    addr_hist_user: list[UserAddrHistResult]
 
 
 class SSEBlockEvent(str, enum.Enum):
@@ -511,5 +498,4 @@ class BlockSSEResult(Parent):
     id: int
     event: SSEBlockEvent
     block: Block
-    hist: List[AddrHistResult]
-
+    hist: list[AddrHistResult]
