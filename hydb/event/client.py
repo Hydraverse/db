@@ -8,7 +8,7 @@ from hydb.api import schemas
 
 
 class Events:
-    class EventType(str, enum.Enum):
+    class EventType(enum.StrEnum):
         BLOCK = "block"
 
     @staticmethod

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "hydra-chain-db"
-version = "2.2.2"
+version = "2.2.3"
 description = "A database for tracking blockchain data from the Hydra Chain."
 authors = [
     "Phillip Sitbon <phillip.sitbon@gmail.com>",

@@ -234,7 +234,7 @@ class AddrHist(AddrHistBase):
 
 
 class AddrBase(Parent):
-    class Type(str, enum.Enum):
+    class Type(enum.StrEnum):
         H = "HYDRA"
         S = "smart contract"
         N = "NFT"
@@ -489,7 +489,7 @@ class AddrHistResult(AddrHistBase):
     addr_hist_user: list[UserAddrHistResult]
 
 
-class SSEBlockEvent(str, enum.Enum):
+class SSEBlockEvent(enum.StrEnum):
     create = "create"
     mature = "mature"
 
